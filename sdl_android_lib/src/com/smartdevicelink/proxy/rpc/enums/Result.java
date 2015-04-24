@@ -126,7 +126,9 @@ public enum Result {
     SAVED,
     INVALID_CERT,
     EXPIRED_CERT,
-    RESUME_FAILED;
+    RESUME_FAILED,
+    READ_ONLY,
+    ;
 
     public static Result valueForString(String value) {
         try{

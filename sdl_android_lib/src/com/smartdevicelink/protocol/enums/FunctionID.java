@@ -61,12 +61,21 @@ public class FunctionID {
 	public static final String ON_SYSTEM_REQUEST = "OnSystemRequest";
 	public static final String ON_HASH_CHANGE = "OnHashChange";
 	public static final String ON_PERMISSIONS_CHANGE = "OnPermissionsChange";
+
+
 	public static final String SLIDER = "Slider";
 	public static final String ON_LOCK_SCREEN_STATUS = "OnLockScreenStatus";
 	public static final String ON_SDL_CHOICE_CHOSEN = "OnSdlChoiceChosen";
 	
 	public static final String SEND_LOCATION = "SendLocation";
 
+	//REMOTE CONTROL
+	public static final String GET_INTERIOR_VEHICLE_DATA_CAPABILITIES = "GetInteriorVehicleDataCapabilities";
+	public static final String GET_INTERIOR_VEHICLE_DATA = "GetInteriorVehicleData";
+	public static final String SET_INTERIOR_VEHICLE_DATA = "SetInteriorVehicleData";
+
+	public static final String ON_INTERIOR_VEHICLE_DATA = "OnInteriorVehicleDataID";
+	
     public FunctionID() {
     }
 
@@ -95,7 +104,7 @@ public class FunctionID {
 
     static public void initFunctionIds() {
 
-        functionIDMap = new HashMap<String, Integer>(60) {/**
+        functionIDMap = new HashMap<String, Integer>(70) {/**
              * 
              */
             private static final long serialVersionUID = 6301013743706264910L;
@@ -144,7 +153,11 @@ public class FunctionID {
             put(FunctionID.DIAGNOSTIC_MESSAGE, 37);
             put(FunctionID.SYSTEM_REQUEST, 38);
             put(FunctionID.SEND_LOCATION, 39);
-
+            
+            //REMOTE CONTROL
+            put(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES, 40);
+            put(FunctionID.GET_INTERIOR_VEHICLE_DATA, 41);
+            put(FunctionID.SET_INTERIOR_VEHICLE_DATA, 42);
             /*
                 Base Notifications
                 Range = 0x 0000 8000 - 0x 0000 FFFF
@@ -162,7 +175,10 @@ public class FunctionID {
             put(FunctionID.ON_LANGUAGE_CHANGE, 32778);
             put(FunctionID.ON_SYSTEM_REQUEST, 32781);
             put(FunctionID.ON_HASH_CHANGE, 32782);
-
+            
+            //Remote Control //TODO check if this is cool
+            put(FunctionID.ON_INTERIOR_VEHICLE_DATA, 32783);
+            
             /*
                 Ford Specific Request / Response RPCs
                 Range = 0x 0001 0000 - 0x 0001 7FFF
