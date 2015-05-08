@@ -53,6 +53,11 @@ import com.smartdevicelink.proxy.callbacks.OnError;
 import com.smartdevicelink.proxy.callbacks.OnProxyClosed;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerBase;
+import com.smartdevicelink.proxy.rc.rpc.ButtonPressResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilitiesResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataResponse;
+import com.smartdevicelink.proxy.rc.rpc.OnInteriorVehicleData;
+import com.smartdevicelink.proxy.rc.rpc.SetInteriorVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.AddCommand;
 import com.smartdevicelink.proxy.rpc.AddCommandResponse;
 import com.smartdevicelink.proxy.rpc.AddSubMenu;
@@ -2485,6 +2490,66 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
    					_proxyListener.onSystemRequestResponse((SystemRequestResponse)msg);
                     onPacketFinish(msg);	
    				}
+            }else if (functionName.equals(FunctionID.BUTTON_PRESS)) {
+   				final ButtonPressResponse msg = new ButtonPressResponse(hash);
+   				if (_callbackToUIThread) {
+   					// Run in UI thread
+   					_mainUIHandler.post(new Runnable() {
+   						@Override
+   						public void run() {
+   							_proxyListener.onButtonPressResponse(msg);
+                            onPacketFinish(msg);
+   						}
+   					});
+   				} else {
+   					_proxyListener.onButtonPressResponse(msg);
+                    onPacketFinish(msg);	
+   				}
+            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES)) {
+   				final GetInteriorVehicleDataCapabilitiesResponse msg = new GetInteriorVehicleDataCapabilitiesResponse(hash);
+   				if (_callbackToUIThread) {
+   					// Run in UI thread
+   					_mainUIHandler.post(new Runnable() {
+   						@Override
+   						public void run() {
+   							_proxyListener.onGetInteriorVehicleDataCapabilitiesResponse(msg);
+                            onPacketFinish(msg);
+   						}
+   					});
+   				} else {
+   					_proxyListener.onGetInteriorVehicleDataCapabilitiesResponse(msg);
+                    onPacketFinish(msg);	
+   				}
+            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA)) {
+   				final GetInteriorVehicleDataResponse msg = new GetInteriorVehicleDataResponse(hash);
+   				if (_callbackToUIThread) {
+   					// Run in UI thread
+   					_mainUIHandler.post(new Runnable() {
+   						@Override
+   						public void run() {
+   							_proxyListener.onGetInteriorVehicleDataResponse(msg);
+                            onPacketFinish(msg);
+   						}
+   					});
+   				} else {
+   					_proxyListener.onGetInteriorVehicleDataResponse(msg);
+                    onPacketFinish(msg);	
+   				}
+            }else if (functionName.equals(FunctionID.SET_INTERIOR_VEHICLE_DATA)) {
+   				final SetInteriorVehicleDataResponse msg = new SetInteriorVehicleDataResponse(hash);
+   				if (_callbackToUIThread) {
+   					// Run in UI thread
+   					_mainUIHandler.post(new Runnable() {
+   						@Override
+   						public void run() {
+   							_proxyListener.onSetInteriorVehicleDataResponse(msg);
+                            onPacketFinish(msg);
+   						}
+   					});
+   				} else {
+   					_proxyListener.onSetInteriorVehicleDataResponse(msg);
+                    onPacketFinish(msg);	
+   				}
             }
 			else {
 				if (_sdlMsgVersion != null) {
@@ -2830,6 +2895,19 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 					});
 				} else {
 					_proxyListener.onOnTouchEvent((OnTouchEvent)msg);
+				}
+			}else if (functionName.equals(FunctionID.ON_INTERIOR_VEHICLE_DATA)) {
+				final OnInteriorVehicleData msg = new OnInteriorVehicleData(hash);
+				if (_callbackToUIThread) {
+					// Run in UI thread
+					_mainUIHandler.post(new Runnable() {
+						@Override
+						public void run() {
+							_proxyListener.onOnInteriorVehicleData(msg);
+						}
+					});
+				} else {
+					_proxyListener.onOnInteriorVehicleData(msg);
 				}
 			}
 			else {

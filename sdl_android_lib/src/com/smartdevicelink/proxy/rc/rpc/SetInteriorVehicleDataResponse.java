@@ -1,15 +1,14 @@
 package com.smartdevicelink.proxy.rc.rpc;
 
 import java.util.Hashtable;
-import java.util.List;
 
 import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCResponse;
-import com.smartdevicelink.proxy.rc.datatypes.InteriorZoneStatus;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
 
 public class SetInteriorVehicleDataResponse extends RPCResponse {
 
-	public static final String KEY_INTERIOR_ZONE_STATUSES = "interiorZoneStatuses";
+	public static final String KEY_MODULE_DATA = "moduleData";
 
 	/**
 	*Constructs a newly allocated SetInteriorVehicleDataResponse object
@@ -25,25 +24,15 @@ public class SetInteriorVehicleDataResponse extends RPCResponse {
         super(hash);
     }
     
-	@SuppressWarnings("unchecked")
-	public List<InteriorZoneStatus> getInteriorZoneStatuses(){
-        if (store.get(KEY_INTERIOR_ZONE_STATUSES) instanceof List<?>) {
-        	List<?> list = (List<?>)store.get( KEY_INTERIOR_ZONE_STATUSES);
-        	if (list != null && list.size() > 0) {
-        		Object obj = list.get(0);
-        		if (obj instanceof String) {
-                	return (List<InteriorZoneStatus>) list;
-        		}
-        	}
-        }
-        return null;
+	public ModuleData getModuleData(){
+		return (ModuleData) store.get(KEY_MODULE_DATA);
 	}
 
-	public void setInteriorZoneStatuses(List<InteriorZoneStatus> statuses){
-		if (statuses!=null) {
-			store.put(KEY_INTERIOR_ZONE_STATUSES, statuses);
+	public void setModuleData(ModuleData moduleData){
+		if (moduleData!=null) {
+			parameters.put(KEY_MODULE_DATA, moduleData);
 		} else {
-			store.remove(KEY_INTERIOR_ZONE_STATUSES);
+			parameters.remove(KEY_MODULE_DATA);
 		}
 	}
 	

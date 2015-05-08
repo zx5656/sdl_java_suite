@@ -6,7 +6,9 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.Vector;
+
 import android.util.Log;
+
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.protocol.AbstractProtocol;
 import com.smartdevicelink.protocol.IProtocolListener;
@@ -18,7 +20,16 @@ import com.smartdevicelink.streaming.AbstractPacketizer;
 import com.smartdevicelink.streaming.IStreamListener;
 import com.smartdevicelink.streaming.StreamPacketizer;
 import com.smartdevicelink.streaming.StreamRPCPacketizer;
-import com.smartdevicelink.transport.*;
+import com.smartdevicelink.transport.BTTransport;
+import com.smartdevicelink.transport.BTTransportConfig;
+import com.smartdevicelink.transport.BaseTransportConfig;
+import com.smartdevicelink.transport.ITransportListener;
+import com.smartdevicelink.transport.SdlTransport;
+import com.smartdevicelink.transport.TCPTransport;
+import com.smartdevicelink.transport.TCPTransportConfig;
+import com.smartdevicelink.transport.TransportType;
+import com.smartdevicelink.transport.USBTransport;
+import com.smartdevicelink.transport.USBTransportConfig;
 
 public class SdlConnection implements IProtocolListener, ITransportListener, IStreamListener  {
 

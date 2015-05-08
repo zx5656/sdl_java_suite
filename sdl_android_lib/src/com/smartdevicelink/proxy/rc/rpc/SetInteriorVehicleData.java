@@ -1,15 +1,14 @@
 package com.smartdevicelink.proxy.rc.rpc;
 
 import java.util.Hashtable;
-import java.util.List;
 
 import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCRequest;
-import com.smartdevicelink.proxy.rc.datatypes.InteriorZoneStatus;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
 
 public class SetInteriorVehicleData extends RPCRequest {
 
-	public static final String KEY_INTERIOR_ZONE_STATUSES = "interiorZoneStatuses";
+	public static final String KEY_MODULE_DATA = "moduleData";
 
 	/**
 	*Constructs a newly allocated SetInteriorVehicleData object
@@ -17,6 +16,16 @@ public class SetInteriorVehicleData extends RPCRequest {
     public SetInteriorVehicleData() {
         super(FunctionID.SET_INTERIOR_VEHICLE_DATA);
     }
+    
+	/**
+	*Constructs a newly allocated SetInteriorVehicleData object
+	*@param moduleData The instance of module data to be sent
+	*/ 	
+    public SetInteriorVehicleData(ModuleData moduleData) {
+        super(FunctionID.SET_INTERIOR_VEHICLE_DATA);
+        this.setModuleData(moduleData);
+    }
+    /**
     /**
     *<p>Constructs a newly allocated SetInteriorVehicleData object indicated by the Hashtable parameter</p>
     *@param hash The Hashtable to use
@@ -25,27 +34,15 @@ public class SetInteriorVehicleData extends RPCRequest {
         super(hash);
     }
     
-    //TODO should we be sending a zone id as well with this request?
-	
-	@SuppressWarnings("unchecked")
-	public List<InteriorZoneStatus> getInteriorZoneStatuses(){
-        if (store.get(KEY_INTERIOR_ZONE_STATUSES) instanceof List<?>) {
-        	List<?> list = (List<?>)store.get( KEY_INTERIOR_ZONE_STATUSES);
-        	if (list != null && list.size() > 0) {
-        		Object obj = list.get(0);
-        		if (obj instanceof String) {
-                	return (List<InteriorZoneStatus>) list;
-        		}
-        	}
-        }
-        return null;
+	public ModuleData getModuleData(){
+		return (ModuleData) store.get(KEY_MODULE_DATA);
 	}
 
-	public void setInteriorZoneStatuses(List<InteriorZoneStatus> statuses){
-		if (statuses!=null) {
-			store.put(KEY_INTERIOR_ZONE_STATUSES, statuses);
+	public void setModuleData(ModuleData moduleData){
+		if (moduleData!=null) {
+			parameters.put(KEY_MODULE_DATA, moduleData);
 		} else {
-			store.remove(KEY_INTERIOR_ZONE_STATUSES);
+			parameters.remove(KEY_MODULE_DATA);
 		}
 	}
 	

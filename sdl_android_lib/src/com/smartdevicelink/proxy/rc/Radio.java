@@ -1,45 +1,39 @@
 package com.smartdevicelink.proxy.rc;
 
-import com.smartdevicelink.proxy.OnUpdateListener;
 import com.smartdevicelink.proxy.RPCMessage;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
-import com.smartdevicelink.proxy.rc.enums.InteriorDataType;
-import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleData;
+import com.smartdevicelink.proxy.rc.datatypes.RadioControlData;
+import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.proxy.rc.enums.RadioBand;
+import com.smartdevicelink.proxy.rc.rpc.SetInteriorVehicleData;
+import com.smartdevicelink.proxy.rpc.enums.ButtonName;
+import com.smartdevicelink.proxy.rpc.enums.ButtonPressMode;
 
 public class Radio extends Module{
 
-	
+
 	public Radio(InteriorZone zone) {
-		super(InteriorDataType.RADIO,zone);
+		super(ModuleType.RADIO,zone);
 		
 	}
 
-	public void tuneUp(){
-		//Send get radio status
-		//Pase station
-		//Send set radio status to station +2
-		
-	}
-	
-	public void tuneDown(){
-		//Same as tuneup but -2
-	}
-	public void tune(){
-		GetInteriorVehicleData getStatus = baseGetStatusRequest();
-		getStatus.setOnUpdateListener(new OnUpdateListener(){
-
-			@Override
-			public void onFinish(int correlationId, RPCMessage message, long totalSize) {
-				// TODO send a set rpc
+	public RPCMessage tuneUp(){
+		return this.getButtonPress(ButtonName.TUNEUP, ButtonPressMode.SHORT);
 				
-			}
-			
-		});
 	}
 	
-
+	public RPCMessage tuneDown(){
+		return this.getButtonPress(ButtonName.TUNEDOWN,ButtonPressMode.SHORT);
+	}
 	
-	private void getStatus(){
+	public RPCMessage directTune(int freqInt, int freqFrac, RadioBand band){		
+		RadioControlData radio = new RadioControlData();
+		radio.setFrequencyInteger(freqInt);
+		radio.setFrequencyFraction(freqFrac);
+		radio.setBand(band);
+		return new SetInteriorVehicleData(getBaseModuleData(radio));
 		
 	}
+	
+	
 }

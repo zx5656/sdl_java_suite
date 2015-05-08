@@ -5,13 +5,13 @@ import java.util.List;
 
 import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCRequest;
-import com.smartdevicelink.proxy.rc.datatypes.InteriorZoneDescription;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleDescription;
 
 public class GetInteriorVehicleData extends RPCRequest {
 
 	
-	public static final String KEY_INTERIOR_ZONE_DESCRIPTION = "interiorZoneDescription";
-	public static final String KEY_SUBSCRIBE = "subscribe";
+	public static final String KEY_MODULE_DESCRIPTION 	= "moduleDescription";
+	public static final String KEY_SUBSCRIBE 			= "subscribe";
 
 	
 	/**
@@ -29,37 +29,27 @@ public class GetInteriorVehicleData extends RPCRequest {
     }
 
 	
-	@SuppressWarnings("unchecked")
-	public List<InteriorZoneDescription> getInteriorZoneDescriptions(){
-        if (store.get(KEY_INTERIOR_ZONE_DESCRIPTION) instanceof List<?>) {
-        	List<?> list = (List<?>)store.get( KEY_INTERIOR_ZONE_DESCRIPTION);
-        	if (list != null && list.size() > 0) {
-        		Object obj = list.get(0);
-        		if (obj instanceof String) {
-                	return (List<InteriorZoneDescription>) list;
-        		}
-        	}
-        }
-        return null;
+	public ModuleDescription getModuleDescription(){
+		return (ModuleDescription)parameters.get(KEY_MODULE_DESCRIPTION);
 	}
 
-	public void setInteriorZoneDescriptions(List<InteriorZoneDescription> zoneDescriptions){
-		if (zoneDescriptions!=null) {
-			store.put(KEY_INTERIOR_ZONE_DESCRIPTION, zoneDescriptions);
+	public void setModuleDescription(ModuleDescription moduleDescription){
+		if (moduleDescription!=null) {
+			parameters.put(KEY_MODULE_DESCRIPTION, moduleDescription);
 		} else {
-			store.remove(KEY_INTERIOR_ZONE_DESCRIPTION);
+			parameters.remove(KEY_MODULE_DESCRIPTION);
 		}
 	}
 	
 	public Boolean getSubscribed(){
-		return (Boolean) store.get(KEY_SUBSCRIBE);
+		return (Boolean) parameters.get(KEY_SUBSCRIBE);
 	}
 
 	public void setSubscribed(Boolean subscribe){
 		if (subscribe!=null) {
-			store.put(KEY_SUBSCRIBE, subscribe);
+			parameters.put(KEY_SUBSCRIBE, subscribe);
 		} else {
-			store.remove(KEY_SUBSCRIBE);
+			parameters.remove(KEY_SUBSCRIBE);
 		}
 	}
     

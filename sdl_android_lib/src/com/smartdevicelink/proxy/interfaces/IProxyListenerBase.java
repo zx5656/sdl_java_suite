@@ -1,5 +1,10 @@
 package com.smartdevicelink.proxy.interfaces;
 
+import com.smartdevicelink.proxy.rc.rpc.ButtonPressResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilitiesResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataResponse;
+import com.smartdevicelink.proxy.rc.rpc.OnInteriorVehicleData;
+import com.smartdevicelink.proxy.rc.rpc.SetInteriorVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.AddCommandResponse;
 import com.smartdevicelink.proxy.rpc.AddSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.AlertResponse;
@@ -297,4 +302,18 @@ public interface IProxyListenerBase  {
 	public void onGetDTCsResponse(GetDTCsResponse response);
 	
 	public void onOnLockScreenNotification(OnLockScreenStatus notification);
+	
+	public void onButtonPressResponse(ButtonPressResponse response);
+	
+	public void onGetInteriorVehicleDataCapabilitiesResponse(GetInteriorVehicleDataCapabilitiesResponse response);
+	
+	public void onGetInteriorVehicleDataResponse(GetInteriorVehicleDataResponse response);
+	
+	public void onSetInteriorVehicleDataResponse(SetInteriorVehicleDataResponse response);
+	
+	public void onOnInteriorVehicleData(OnInteriorVehicleData notification);
+
+
+	
+	
 }

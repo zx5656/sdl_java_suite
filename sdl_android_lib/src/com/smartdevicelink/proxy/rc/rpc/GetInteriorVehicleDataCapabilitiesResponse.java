@@ -1,15 +1,17 @@
 package com.smartdevicelink.proxy.rc.rpc;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 
 import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCResponse;
-import com.smartdevicelink.proxy.rc.datatypes.InteriorZoneDescription;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleDescription;
+import com.smartdevicelink.proxy.rpc.ButtonCapabilities;
 
 public class GetInteriorVehicleDataCapabilitiesResponse extends RPCResponse {
 
-	public static final String KEY_INTERIOR_ZONE_CAPABILITIES = "zoneCapabilities";
+	public static final String KEY_INTERIOR_VEHICLE_CAPABILITIES = "interiorVehicleDataCapabilities";
 
 	
 	/**
@@ -25,28 +27,32 @@ public class GetInteriorVehicleDataCapabilitiesResponse extends RPCResponse {
     public GetInteriorVehicleDataCapabilitiesResponse(Hashtable<String, Object> hash) {
         super(hash);
     }
-    
-	//TODO make sure this is still how we are doing it as an array
-	
+    	
 	@SuppressWarnings("unchecked")
-	public List<InteriorZoneDescription> getInteriorCapabilities(){
-        if (store.get(KEY_INTERIOR_ZONE_CAPABILITIES) instanceof List<?>) {
-        	List<?> list = (List<?>)store.get( KEY_INTERIOR_ZONE_CAPABILITIES);
+	public List<ModuleDescription> getInteriorCapabilities(){
+        if (parameters.get(KEY_INTERIOR_VEHICLE_CAPABILITIES) instanceof List<?>) {
+        	List<?> list = (List<?>)parameters.get(KEY_INTERIOR_VEHICLE_CAPABILITIES);
         	if (list != null && list.size() > 0) {
         		Object obj = list.get(0);
-        		if (obj instanceof String) {
-                	return (List<InteriorZoneDescription>) list;
-        		}
+        		if (obj instanceof ModuleDescription) {
+                	return (List<ModuleDescription>) list;
+        		} else if (obj instanceof Hashtable) {
+	            	List<ModuleDescription> newList = new ArrayList<ModuleDescription>();
+	                for (Object hashObj : list) {
+	                    newList.add(new ModuleDescription((Hashtable<String, Object>)hashObj));
+	                }
+	                return newList;
+	            }
         	}
         }
         return null;
 	}
 
-	public void setInteriorCapabilities(List<InteriorZoneDescription> zoneCapabilities){
+	public void setInteriorCapabilities(List<ModuleDescription> zoneCapabilities){
 		if (zoneCapabilities!=null) {
-			store.put(KEY_INTERIOR_ZONE_CAPABILITIES, zoneCapabilities);
+			parameters.put(KEY_INTERIOR_VEHICLE_CAPABILITIES, zoneCapabilities);
 		} else {
-			store.remove(KEY_INTERIOR_ZONE_CAPABILITIES);
+			parameters.remove(KEY_INTERIOR_VEHICLE_CAPABILITIES);
 		}
 	}  
     

@@ -1,5 +1,6 @@
 package com.smartdevicelink.proxy.rc.datatypes;
 
+import java.security.InvalidParameterException;
 import java.util.Hashtable;
 
 import com.smartdevicelink.proxy.RPCStruct;
@@ -19,11 +20,35 @@ public class InteriorZone extends RPCStruct {
 	public static final String KEY_ROW_SPAN  	= "rowspan";
 	public static final String KEY_LEVEL_SPAN  	= "levelspan";
 	
-	
+	private static final int LOCATION = 0;
+	private static final int SPAN = 1;
+
 	/**
 	 * Constructs a newly allocated InteriorZone object
 	 */
 	public InteriorZone() { }
+
+/**
+ * If values aren't set correctly constructor will an InvalidParameterException
+ * @param colD a 2 item array [column, column span]
+ * @param rowD a 2 item array [row, row span]
+ * @param levelD a 2 item array [level, level span]
+ */
+	public InteriorZone(int[] rowD,int[] colD, int[] levelD) { 
+		try{
+			this.setRow(rowD[LOCATION]);
+			this.setRowSpan(rowD[SPAN]);
+			
+			this.setColumn(colD[LOCATION]);
+			this.setColumnSpan(colD[SPAN]);
+			
+			this.setLevel(levelD[LOCATION]);
+			this.setLevelSpan(levelD[SPAN]);
+			
+		}catch(Exception e){
+			throw new InvalidParameterException("Can't create object, values were invalid");
+		}
+	}
 
 	/**
 	 * Constructs a newly allocated InteriorZone object indicated by the Hashtable parameter
@@ -106,11 +131,36 @@ public class InteriorZone extends RPCStruct {
 		}
 	}
 	
+	/**
+	 * This will check to see if the provided zone is contained within the zone calling this method
+	 * @param zone
+	 * @return
+	 */
 	public boolean isContainedWithin(InteriorZone zone){
-		boolean isContained = false;
+		if(zone==null){
+			return false;
+		}
 		
-		
-		
-		return isContained;
+		int level = this.getLevel();
+		int cLevel = zone.getLevel();
+		if(level<= cLevel && cLevel <= (level + this.getLevelSpan())){
+			//We are contained in the same level
+			int row = this.getRow();
+			int cRow = zone.getRow();
+			if(row<= cRow && cRow <= (row + this.getRowSpan())){
+				//We are within the row
+				int col = this.getColumn();
+				int cCol = zone.getColumn();
+				if(col<= cCol && cCol <= (col + this.getColumnSpan())){
+					//We are within the column!
+					return true;
+				}
+			}
+			
+		}
+		return false;
 	}
+	
+	//TODO override to string
+	
 }

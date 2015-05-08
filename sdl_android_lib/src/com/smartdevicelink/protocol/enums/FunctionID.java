@@ -70,11 +70,11 @@ public class FunctionID {
 	public static final String SEND_LOCATION = "SendLocation";
 
 	//REMOTE CONTROL
+	public static final String BUTTON_PRESS = "ButtonPress";
 	public static final String GET_INTERIOR_VEHICLE_DATA_CAPABILITIES = "GetInteriorVehicleDataCapabilities";
 	public static final String GET_INTERIOR_VEHICLE_DATA = "GetInteriorVehicleData";
 	public static final String SET_INTERIOR_VEHICLE_DATA = "SetInteriorVehicleData";
-
-	public static final String ON_INTERIOR_VEHICLE_DATA = "OnInteriorVehicleDataID";
+	public static final String ON_INTERIOR_VEHICLE_DATA = "OnInteriorVehicleData";
 	
     public FunctionID() {
     }
@@ -154,10 +154,13 @@ public class FunctionID {
             put(FunctionID.SYSTEM_REQUEST, 38);
             put(FunctionID.SEND_LOCATION, 39);
             
-            //REMOTE CONTROL
-            put(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES, 40);
-            put(FunctionID.GET_INTERIOR_VEHICLE_DATA, 41);
-            put(FunctionID.SET_INTERIOR_VEHICLE_DATA, 42);
+            //REMOTE CONTROL //FIXME TO THE ACTUAL VALUES
+            put(FunctionID.BUTTON_PRESS, 41);
+            put(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES, 42);
+            put(FunctionID.GET_INTERIOR_VEHICLE_DATA, 43);
+            put(FunctionID.SET_INTERIOR_VEHICLE_DATA, 44);
+            
+
             /*
                 Base Notifications
                 Range = 0x 0000 8000 - 0x 0000 FFFF

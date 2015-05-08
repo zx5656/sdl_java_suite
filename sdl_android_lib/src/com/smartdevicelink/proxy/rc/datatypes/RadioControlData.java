@@ -2,7 +2,7 @@ package com.smartdevicelink.proxy.rc.datatypes;
 
 import java.util.Hashtable;
 
-import com.smartdevicelink.proxy.rc.enums.InteriorDataType;
+import com.smartdevicelink.proxy.rc.enums.ModuleType;
 import com.smartdevicelink.proxy.rc.enums.RadioBand;
 import com.smartdevicelink.proxy.rc.enums.RadioState;
 
@@ -14,7 +14,7 @@ public class RadioControlData extends ControlData{
 	public static final String KEY_BAND 					= "band";
 	public static final String KEY_RDS_DATA					= "rdsData";
 	public static final String KEY_AVAILABLE_HDS			= "availableHDs";
-	public static final String KEY_CURRENT_HD				= "currentHD";
+	public static final String KEY_HD_CHANNEL				= "hdChannel";
 	public static final String KEY_SIGNAL_STRENGTH			= "signalStrength";
 	public static final String KEY_SIGNAL_CHANGE_THRESHOLD	= "signalChangeThreshold";
 	public static final String KEY_RADIO_ENABLED			= "radioEnable";
@@ -26,7 +26,7 @@ public class RadioControlData extends ControlData{
 	 * Constructs a newly allocated RadioControlData object
 	 */
 	public RadioControlData() { 
-		this.setInteriorDataType(InteriorDataType.RADIO);
+		this.setInteriorDataType(ModuleType.RADIO);
 	}
 
 	/**
@@ -35,7 +35,7 @@ public class RadioControlData extends ControlData{
 	 */      
 	public RadioControlData(Hashtable<String, Object> hash) {
 		super(hash);
-		this.setInteriorDataType(InteriorDataType.RADIO);
+		this.setInteriorDataType(ModuleType.RADIO);
 	}
 
 	/**
@@ -115,15 +115,15 @@ public class RadioControlData extends ControlData{
 	 * Current HD sub-channel if available
 	 * @return
 	 */
-	public Integer getCurrentHDChannel(){
-		return (Integer) store.get(KEY_CURRENT_HD);
+	public Integer getHDChannel(){
+		return (Integer) store.get(KEY_HD_CHANNEL);
 	}
 
-	public void setCurrentHDChannel(Integer channel){
+	public void setHDChannel(Integer channel){
 		if (channel!=null) {
-			store.put(KEY_CURRENT_HD, channel);
+			store.put(KEY_HD_CHANNEL, channel);
 		} else {
-			store.remove(KEY_CURRENT_HD);
+			store.remove(KEY_HD_CHANNEL);
 		}
 	}
 	

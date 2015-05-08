@@ -1,29 +1,84 @@
 package com.smartdevicelink.proxy.rc;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.rc.datatypes.ControlData;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
-import com.smartdevicelink.proxy.rc.datatypes.InteriorZoneDescription;
-import com.smartdevicelink.proxy.rc.enums.InteriorDataType;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleDescription;
+import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.proxy.rc.rpc.ButtonPress;
 import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleData;
+import com.smartdevicelink.proxy.rc.rpc.SetInteriorVehicleData;
+import com.smartdevicelink.proxy.rpc.enums.ButtonName;
+import com.smartdevicelink.proxy.rpc.enums.ButtonPressMode;
 
 public abstract class Module {
 
-	protected InteriorDataType type;
+	protected ModuleType type;
 	protected InteriorZone zone;
 	
-	public Module(InteriorDataType type,InteriorZone zone ){
+	public Module(ModuleType type,InteriorZone zone ){
 		this.type = type;
 		this.zone = zone;
 	}
 	
-	protected GetInteriorVehicleData baseGetStatusRequest(){
+	public ModuleType getType() {
+		return type;
+	}
+
+
+
+	public InteriorZone getZone() {
+		return zone;
+	}
+
+	protected GetInteriorVehicleData buildGetInteriorVehicleDataRequest(){
 		GetInteriorVehicleData getData = new GetInteriorVehicleData();
-		List<InteriorZoneDescription> caps = new ArrayList<InteriorZoneDescription>();
-		caps.add(new InteriorZoneDescription(zone,type));
-		getData.setInteriorZoneDescriptions(caps);		
+		getData.setModuleDescription(new ModuleDescription(this.zone,this.type));;		
 		return getData;
+	}
+	
+	public RPCMessage getStatus(){
+		return buildGetInteriorVehicleDataRequest();
+	}
+	
+	
+	protected SetInteriorVehicleData buildSetInteriorVehicleDataRequest(ControlData data){
+		SetInteriorVehicleData setData = new SetInteriorVehicleData();
+		setData.setModuleData(getBaseModuleData(data));
+		return setData;
+	}
+	
+	public RPCMessage setStatus(ControlData data){
+		return buildSetInteriorVehicleDataRequest(data);
+	}
+	
+	
+	
+	/**
+	 * Subscribe will send a message to the car to subscribe to that data and the response will 
+	 * include the module data
+	 * @param subscribe
+	 * @return
+	 */
+	public RPCMessage subscribe(boolean subscribe){
+		GetInteriorVehicleData data = buildGetInteriorVehicleDataRequest();
+		data.setSubscribed(subscribe);
+		return data;
+	}
+	
+	protected ButtonPress getButtonPress(ButtonName button, ButtonPressMode pressMode){
+		ButtonPress buttonPress = new ButtonPress();
+		buttonPress.setZone(zone);
+		buttonPress.setModuleType(type);
+		buttonPress.setButtonName(button);
+		buttonPress.setButtonPressMode(pressMode);
+		return buttonPress;
+	}
+	
+	protected ModuleData getBaseModuleData(ControlData data){
+		return new ModuleData(type, zone, data);
+		
 	}
 	
 }

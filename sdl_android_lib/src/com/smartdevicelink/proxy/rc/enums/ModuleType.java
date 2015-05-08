@@ -1,6 +1,6 @@
 package com.smartdevicelink.proxy.rc.enums;
 
-public enum InteriorDataType {
+public enum ModuleType {
 
 	CLIMATE,
 	RADIO,
