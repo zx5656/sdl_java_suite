@@ -5,6 +5,7 @@ import java.util.Hashtable;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
 import com.smartdevicelink.proxy.rc.enums.RadioBand;
 import com.smartdevicelink.proxy.rc.enums.RadioState;
+import com.smartdevicelink.util.DebugTool;
 
 public class RadioControlData extends ControlData{
 
@@ -72,7 +73,19 @@ public class RadioControlData extends ControlData{
 	//TODO add a get/set frequency with float
 	
 	public RadioBand getBand(){
-		return (RadioBand) store.get(KEY_BAND);
+		 Object obj = store.get(KEY_BAND);
+		 if (obj instanceof RadioBand) {
+	            return (RadioBand) obj;
+	        } else if (obj instanceof String) {
+	        	RadioBand band = null;
+	            try {
+	                band = RadioBand.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_BAND, e);
+	            }
+	            return band;
+	        }
+		 return null;
 	}
 
 	public void setBand(RadioBand band){
@@ -172,7 +185,20 @@ public class RadioControlData extends ControlData{
 	}
 	
 	public RadioState getRadioState(){
-		return (RadioState) store.get(KEY_STATE);
+		 Object obj = store.get(KEY_STATE);
+		 if (obj instanceof RadioState) {
+	            return (RadioState) obj;
+	        } else if (obj instanceof String) {
+	        	RadioState state = null;
+	            try {
+	                state = RadioState.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_STATE, e);
+	            }
+	            return state;
+	        }
+		
+		 return null;
 	}
 
 	public void setRadioState(RadioState radioState){

@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.smartdevicelink.proxy.RPCStruct;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.util.DebugTool;
 
 /**
  * The interiorDataType indicates which type of data should be changed and identifies which data object exists in this struct. <p>For example, if the interiorDataType is CLIMATE then a "climateControlData" should exist
@@ -43,8 +44,22 @@ public class ModuleData extends RPCStruct {
 		super(hash);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public ModuleType getModuleType(){
-		return (ModuleType) store.get(KEY_MODULE_TYPE);
+		 Object obj = store.get(KEY_MODULE_TYPE);
+		 if (obj instanceof ModuleType) {
+	            return (ModuleType) obj;
+	        } else if (obj instanceof String) {
+	        	ModuleType type = null;
+	            try {
+	                type = ModuleType.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_MODULE_TYPE, e);
+	            }
+	            return type;
+	        }
+		
+		 return null;
 	}
 
 	public void setModuleType(ModuleType type){
@@ -55,8 +70,14 @@ public class ModuleData extends RPCStruct {
 		}
 	}
 	
-	public InteriorZone getModuleZone(){
-		return (InteriorZone) store.get(KEY_MODULE_ZONE);
+	public InteriorZone getZone(){
+		 Object obj = store.get(KEY_MODULE_ZONE);
+		 if (obj instanceof InteriorZone) {
+		 return (InteriorZone)obj;
+		 }else if(obj instanceof Hashtable){
+			 return new InteriorZone((Hashtable<String,Object>)obj);
+		 }
+		 return null;
 	}
 
 	public void setModuleZone(InteriorZone zone){
@@ -74,16 +95,37 @@ public class ModuleData extends RPCStruct {
 		}
 		switch(type){
 			case RADIO:
-				return (RadioControlData) store.get(KEY_RADIO_DATA);
+				return getRadioData();
 			case CLIMATE:
-				//TODO return (ClimateControlData) store.get(KEY_CLIMATE_DATA);
+				return getClimateData();
 			//Anymore cases can be added here as we add more types
 			default:
 				return null;
 		}
 		
 	}
-
+	
+	private RadioControlData getRadioData(){
+		 Object obj = store.get(KEY_RADIO_DATA);
+		if (obj instanceof RadioControlData) {
+			return (RadioControlData)obj;
+		}else if(obj instanceof Hashtable){
+			return new RadioControlData((Hashtable<String,Object>)obj);
+		}
+		return null;
+			
+	}
+	
+	private ClimateControlData getClimateData(){
+		 Object obj = store.get(KEY_CLIMATE_DATA);
+		if (obj instanceof ClimateControlData) {
+			return (ClimateControlData)obj;
+		}else if(obj instanceof Hashtable){
+			return new ClimateControlData((Hashtable<String,Object>)obj);
+		}
+		return null;
+			
+	}
 	public void setControlData(ControlData data){
 		
 		ModuleType type = getModuleType();

@@ -4,6 +4,7 @@ import java.util.Hashtable;
 
 import com.smartdevicelink.proxy.rc.enums.DefrostZone;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.util.DebugTool;
 
 public class ClimateControlData extends ControlData {
 
@@ -159,7 +160,20 @@ public class ClimateControlData extends ControlData {
 	 * @return True, False, or null if not included
 	 */
 	public DefrostZone getDefrostZone(){
-		return (DefrostZone) store.get(KEY_DEFROST_ZONE);
+		 Object obj = store.get(KEY_DEFROST_ZONE);
+		 if (obj instanceof DefrostZone) {
+	            return (DefrostZone) obj;
+	        } else if (obj instanceof String) {
+	        	DefrostZone zone = null;
+	            try {
+	                zone = DefrostZone.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_DEFROST_ZONE, e);
+	            }
+	            return zone;
+	        }
+		
+		 return null;
 	}
 
 	/**

@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.smartdevicelink.proxy.RPCStruct;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.proxy.rpc.enums.VehicleDataEventStatus;
+import com.smartdevicelink.util.DebugTool;
 
 public class ModuleDescription extends RPCStruct{
 
@@ -35,7 +37,13 @@ public class ModuleDescription extends RPCStruct{
 	
 	
 	public InteriorZone getZone(){
-		return (InteriorZone) store.get(KEY_ZONE);
+		 Object obj = store.get(KEY_ZONE);
+		 if (obj instanceof InteriorZone) {
+		 return (InteriorZone)obj;
+		 }else if(obj instanceof Hashtable){
+			 return new InteriorZone((Hashtable<String,Object>)obj);
+		 }
+		 return null;
 	}
 
 	public void setZone(InteriorZone zone){
@@ -48,8 +56,20 @@ public class ModuleDescription extends RPCStruct{
 		
 	@SuppressWarnings("unchecked")
 	public ModuleType getModuleType(){
-		return (ModuleType) store.get(KEY_MODULE_TYPE);
-
+		 Object obj = store.get(KEY_MODULE_TYPE);
+		 if (obj instanceof ModuleType) {
+	            return (ModuleType) obj;
+	        } else if (obj instanceof String) {
+	        	ModuleType type = null;
+	            try {
+	                type = ModuleType.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_MODULE_TYPE, e);
+	            }
+	            return type;
+	        }
+		
+		 return null;
 	}
 
 	public void setModuleType(ModuleType moduleType){
