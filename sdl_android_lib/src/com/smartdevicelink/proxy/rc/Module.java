@@ -32,14 +32,15 @@ public abstract class Module {
 		return zone;
 	}
 
-	protected GetInteriorVehicleData buildGetInteriorVehicleDataRequest(){
+	protected GetInteriorVehicleData buildGetInteriorVehicleDataRequest(boolean subscribe){
 		GetInteriorVehicleData getData = new GetInteriorVehicleData();
-		getData.setModuleDescription(new ModuleDescription(this.zone,this.type));;		
+		getData.setModuleDescription(new ModuleDescription(this.zone,this.type));
+		getData.setSubscribed(subscribe);
 		return getData;
 	}
 	
-	public RPCMessage getStatus(){
-		return buildGetInteriorVehicleDataRequest();
+	public RPCMessage getStatus(boolean subscribe){
+		return buildGetInteriorVehicleDataRequest(subscribe);
 	}
 	
 	
@@ -62,7 +63,7 @@ public abstract class Module {
 	 * @return
 	 */
 	public RPCMessage subscribe(boolean subscribe){
-		GetInteriorVehicleData data = buildGetInteriorVehicleDataRequest();
+		GetInteriorVehicleData data = buildGetInteriorVehicleDataRequest(subscribe);
 		data.setSubscribed(subscribe);
 		return data;
 	}
