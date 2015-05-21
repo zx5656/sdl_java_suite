@@ -5,6 +5,8 @@ import java.util.Hashtable;
 import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCNotification;
 import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
+import com.smartdevicelink.proxy.rpc.enums.TriggerSource;
+import com.smartdevicelink.util.DebugTool;
 
 public class OnInteriorVehicleData extends RPCNotification {
 
@@ -26,8 +28,15 @@ public class OnInteriorVehicleData extends RPCNotification {
     }
     
     	
+	@SuppressWarnings("unchecked")
 	public ModuleData getModuleData(){
-        return (ModuleData) parameters.get(KEY_MODULE_DATA);        	
+		 Object obj = parameters.get(KEY_MODULE_DATA);
+	        if (obj instanceof TriggerSource) {
+	            return (ModuleData) obj;
+	        } else if (obj instanceof Hashtable) {
+	            return new ModuleData((Hashtable<String, Object>) obj);
+	        }
+	        return null;
 	}
 
 	public void setModuleData(ModuleData data){
