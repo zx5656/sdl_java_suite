@@ -1,6 +1,5 @@
 package com.smartdevicelink.proxy.rc;
 
-import com.smartdevicelink.proxy.RPCMessage;
 import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.rc.datatypes.ControlData;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
@@ -17,17 +16,26 @@ public abstract class Module {
 
 	protected ModuleType type;
 	protected InteriorZone zone;
+	protected ModuleListener listener;
 	
 	public Module(ModuleType type,InteriorZone zone ){
 		this.type = type;
 		this.zone = zone;
 	}
 	
+	public Module(ModuleType type,InteriorZone zone,ModuleListener listener){
+		this.type = type;
+		this.zone = zone;
+		this.listener = listener;
+	}
+	
+	public void setModuleListener(ModuleListener listener){
+		this.listener = listener;
+	}
+	
 	public ModuleType getType() {
 		return type;
 	}
-
-
 
 	public InteriorZone getZone() {
 		return zone;
@@ -81,6 +89,10 @@ public abstract class Module {
 	protected ModuleData getBaseModuleData(ControlData data){
 		return new ModuleData(type, zone, data);
 		
+	}
+	
+	public interface ModuleListener{
+		public void onUpdate(ControlData data);
 	}
 	
 }

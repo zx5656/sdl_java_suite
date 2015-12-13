@@ -5,13 +5,21 @@ import java.util.Vector;
 
 import android.util.Log;
 
+import com.smartdevicelink.exception.SdlException;
+import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.RPCNotification;
+import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.RPCResponse;
+import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
+import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
 import com.smartdevicelink.proxy.rc.datatypes.ModuleDescription;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
 import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilities;
 import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilitiesResponse;
+import com.smartdevicelink.proxy.rc.rpc.OnInteriorVehicleData;
+import com.smartdevicelink.proxy.rpc.listeners.OnRPCNotificationListener;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 
 public class RemoteControl {
@@ -21,14 +29,50 @@ public class RemoteControl {
 	private InteriorZone zone;
 	private IRemoteControlListener listener;
 	private Vector<Module> modules;	
+	private SdlProxyALM proxy = null;
+	private OnRPCNotificationListener notificationListener;
 	
-	public RemoteControl(InteriorZone zone, IRemoteControlListener listener){
+	
+	public RemoteControl(InteriorZone zone, SdlProxyALM proxy, IRemoteControlListener listener){
 		modules = new Vector<Module>();
 		this.zone = zone;
+		this.proxy = proxy;
 		this.listener = listener;
 		//TODO should we just do a get capabilities right now? 
 		//For now...yes.
 		getCapabilities(true);
+		
+		notificationListener = new OnRPCNotificationListener(){
+
+			@Override
+			public void onNotified(RPCNotification notification) {
+				OnInteriorVehicleData data = (OnInteriorVehicleData)notification;
+				ModuleData moduleData = data.getModuleData();
+				if(moduleData == null){
+					return;// there was an error
+				}
+				switch(moduleData.getModuleType()){
+				case RADIO:
+					Radio radio = (Radio) getModule(ModuleType.RADIO);
+					if(radio != null && radio.listener != null){
+						radio.listener.onUpdate(moduleData.getControlData());
+					}
+					break;
+				case CLIMATE:
+					ClimateControl climate = (ClimateControl) getModule(ModuleType.CLIMATE);
+					if(climate != null && climate.listener != null){
+						climate.listener.onUpdate(moduleData.getControlData());
+					}
+					break;
+				default:
+					break;
+				}
+			}
+
+		};
+		if(this.proxy !=null){
+			this.proxy.addOnRPCNotificationListener(FunctionID.ON_INTERIOR_VEHICLE_DATA, notificationListener);
+		}
 	}
 	
 
@@ -135,10 +179,18 @@ public class RemoteControl {
 		if(zone==null){
 			throw new IllegalStateException("Zone is not set.");
 		}
-		if(listener == null){
-			throw new IllegalStateException("IRemoteControlListener is not set.");
+		if(proxy !=null){ //If we have a reference of a proxy we will just send this through ourselves
+			try {
+				proxy.sendRPCRequest((RPCRequest)msg);
+			} catch (SdlException e) {
+				e.printStackTrace();
+			}
+		}else{
+			if(listener == null){
+				throw new IllegalStateException("IRemoteControlListener is not set.");
+			}
+			listener.send(msg);
 		}
-		listener.send(msg);
 	}
 	
 	public interface IRemoteControlListener{
