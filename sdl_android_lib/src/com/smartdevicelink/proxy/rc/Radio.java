@@ -1,6 +1,6 @@
 package com.smartdevicelink.proxy.rc;
 
-import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
 import com.smartdevicelink.proxy.rc.datatypes.RadioControlData;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
@@ -17,16 +17,16 @@ public class Radio extends Module{
 		
 	}
 
-	public RPCMessage tuneUp(){
+	public RPCRequest tuneUp(){
 		return this.getButtonPress(ButtonName.TUNEUP, ButtonPressMode.SHORT);
 				
 	}
 	
-	public RPCMessage tuneDown(){
+	public RPCRequest tuneDown(){
 		return this.getButtonPress(ButtonName.TUNEDOWN,ButtonPressMode.SHORT);
 	}
 	
-	public RPCMessage directTune(int freqInt, int freqFrac, RadioBand band){		
+	public RPCRequest directTune(int freqInt, int freqFrac, RadioBand band){		
 		RadioControlData radio = new RadioControlData();
 		radio.setFrequencyInteger(freqInt);
 		radio.setFrequencyFraction(freqFrac);

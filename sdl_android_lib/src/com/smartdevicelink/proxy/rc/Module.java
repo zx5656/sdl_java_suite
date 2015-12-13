@@ -1,6 +1,7 @@
 package com.smartdevicelink.proxy.rc;
 
 import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.rc.datatypes.ControlData;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
 import com.smartdevicelink.proxy.rc.datatypes.ModuleData;
@@ -39,7 +40,7 @@ public abstract class Module {
 		return getData;
 	}
 	
-	public RPCMessage getStatus(boolean subscribe){
+	public RPCRequest getStatus(boolean subscribe){
 		return buildGetInteriorVehicleDataRequest(subscribe);
 	}
 	
@@ -50,7 +51,7 @@ public abstract class Module {
 		return setData;
 	}
 	
-	public RPCMessage setStatus(ControlData data){
+	public RPCRequest setStatus(ControlData data){
 		return buildSetInteriorVehicleDataRequest(data);
 	}
 	
@@ -62,7 +63,7 @@ public abstract class Module {
 	 * @param subscribe
 	 * @return
 	 */
-	public RPCMessage subscribe(boolean subscribe){
+	public RPCRequest subscribe(boolean subscribe){
 		GetInteriorVehicleData data = buildGetInteriorVehicleDataRequest(subscribe);
 		data.setSubscribed(subscribe);
 		return data;

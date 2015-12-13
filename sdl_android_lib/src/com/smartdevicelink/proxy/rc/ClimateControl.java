@@ -1,6 +1,6 @@
 package com.smartdevicelink.proxy.rc;
 
-import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.rc.datatypes.ClimateControlData;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
@@ -17,7 +17,7 @@ public class ClimateControl extends Module {
 		
 	}
 	
-	public RPCMessage setTemp(int desiredTemp){
+	public RPCRequest setTemp(int desiredTemp){
 		ClimateControlData climate = new ClimateControlData();
 		climate.setDesiredTemp(desiredTemp);
 		return new SetInteriorVehicleData(getBaseModuleData(climate));
