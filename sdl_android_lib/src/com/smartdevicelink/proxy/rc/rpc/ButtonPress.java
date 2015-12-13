@@ -22,7 +22,7 @@ public class ButtonPress extends RPCRequest {
 	 * Constructs a newly allocated ButtonPress object
 	 */
 	public ButtonPress() { 
-        super(FunctionID.BUTTON_PRESS);
+        super(FunctionID.BUTTON_PRESS.toString());
 	}
 
     /**

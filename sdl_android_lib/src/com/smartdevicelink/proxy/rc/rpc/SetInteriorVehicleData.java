@@ -14,7 +14,7 @@ public class SetInteriorVehicleData extends RPCRequest {
 	*Constructs a newly allocated SetInteriorVehicleData object
 	*/ 	
     public SetInteriorVehicleData() {
-        super(FunctionID.SET_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.SET_INTERIOR_VEHICLE_DATA.toString());
     }
     
 	/**
@@ -22,7 +22,7 @@ public class SetInteriorVehicleData extends RPCRequest {
 	*@param moduleData The instance of module data to be sent
 	*/ 	
     public SetInteriorVehicleData(ModuleData moduleData) {
-        super(FunctionID.SET_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.SET_INTERIOR_VEHICLE_DATA.toString());
         this.setModuleData(moduleData);
     }
     /**

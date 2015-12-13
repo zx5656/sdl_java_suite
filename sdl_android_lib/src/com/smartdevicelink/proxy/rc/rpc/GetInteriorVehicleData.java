@@ -18,7 +18,7 @@ public class GetInteriorVehicleData extends RPCRequest {
 	*Constructs a newly allocated GetInteriorVehicleData object
 	*/ 	
     public GetInteriorVehicleData() {
-        super(FunctionID.GET_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.GET_INTERIOR_VEHICLE_DATA.toString());
     }
     /**
     *<p>Constructs a newly allocated GetInteriorVehicleData object indicated by the Hashtable parameter</p>

@@ -11,7 +11,7 @@ public class ButtonPressResponse extends RPCResponse {
 	 * Constructs a newly allocated ButtonPressResponse object
 	 */
 	public ButtonPressResponse() { 
-        super(FunctionID.BUTTON_PRESS);
+        super(FunctionID.BUTTON_PRESS.toString());
 	}
 
     /**

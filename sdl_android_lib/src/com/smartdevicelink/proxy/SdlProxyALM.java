@@ -12,6 +12,7 @@ import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
 import com.smartdevicelink.proxy.rpc.AudioPassThruCapabilities;
 import com.smartdevicelink.proxy.rpc.ButtonCapabilities;
 import com.smartdevicelink.proxy.rpc.DisplayCapabilities;
+import com.smartdevicelink.proxy.rpc.HMICapabilities;
 import com.smartdevicelink.proxy.rpc.PresetBankCapabilities;
 import com.smartdevicelink.proxy.rpc.SdlMsgVersion;
 import com.smartdevicelink.proxy.rpc.SoftButtonCapabilities;
@@ -27,7 +28,7 @@ import com.smartdevicelink.proxy.rpc.enums.VrCapabilities;
 import com.smartdevicelink.trace.SdlTrace;
 import com.smartdevicelink.transport.BTTransportConfig;
 import com.smartdevicelink.transport.BaseTransportConfig;
-import com.smartdevicelink.transport.TransportType;
+import com.smartdevicelink.transport.enums.TransportType;
 
 public class SdlProxyALM extends SdlProxyBase<IProxyListenerALM> {
 	
@@ -603,6 +604,41 @@ public class SdlProxyALM extends SdlProxyBase<IProxyListenerALM> {
 		
 		SdlTrace.logProxyEvent("Application constructed SdlProxyALM (using legacy constructor for BT transport) instance passing in: IProxyListener, " +
 				"appName, isMediaApp, appID", SDL_LIB_TRACE_KEY);
+	}
+
+	/**
+	 * Constructor for the SdlProxy object, the proxy for communicating between the App and SDL via specified transport.
+	 * 
+	 * Takes advantage of the advanced lifecycle management. 
+	 * 
+	 * @param listener Reference to the object in the App listening to callbacks from SDL.
+	 * @param sdlProxyConfigurationResources Proxy configuration resources.
+	 * @param appName Name of the application displayed on SDL.
+	 * @param isMediaApp Indicates if the app is a media application.
+	 * @param appID Identifier of the client application.
+	 * @throws SdlException
+	 */		
+	public SdlProxyALM(IProxyListenerALM listener, SdlProxyConfigurationResources sdlProxyConfigurationResources, String appName, Boolean isMediaApp,String appID) throws SdlException {
+		super(	listener, 
+				sdlProxyConfigurationResources,
+				/*enable advanced lifecycle management*/true, 
+				appName,
+				/*ttsName*/null,
+				/*ngnMediaScreenAppName*/null,
+				/*vrSynonyms*/null,
+				isMediaApp,
+				/*sdlMsgVersion*/null,
+				/*languageDesired*/null,
+				/*hmiDisplayLanguageDesired*/null,
+				/*App Type*/null,
+				/*App ID*/appID,
+				/*autoActivateID*/null,
+				false,
+				false,
+				new BTTransportConfig());
+		
+		SdlTrace.logProxyEvent("Application constructed SdlProxyALM (using legacy constructor for BT transport) instance passing in: IProxyListener, " +
+				"sdlProxyConfigurationResources, appName, isMediaApp, appID", SDL_LIB_TRACE_KEY);
 	}
 
 	public SdlProxyALM(IProxyListenerALM listener, String appName, Boolean isMediaApp,String appID,BaseTransportConfig transportConfig) throws SdlException {
@@ -1341,7 +1377,7 @@ public class SdlProxyALM extends SdlProxyBase<IProxyListenerALM> {
 	* Gets AudioPassThruCapabilities set when application interface is registered.
 	*
 	* @return AudioPassThruCapabilities
-	* @throws SyncException
+	* @throws SdlException
 	*/
 	public List<AudioPassThruCapabilities> getAudioPassThruCapabilities() throws SdlException {
 		// Test if proxy has been disposed
@@ -1349,9 +1385,9 @@ public class SdlProxyALM extends SdlProxyBase<IProxyListenerALM> {
 			throw new SdlException("This object has been disposed, it is no long capable of executing methods.", SdlExceptionCause.SDL_PROXY_DISPOSED);
 		}
 
-		// Test SYNC availability
+		// Test SDL availability
 		if (!_appInterfaceRegisterd) {
-			throw new SdlException("SYNC is not connected. Unable to get the vehicleType.", SdlExceptionCause.SDL_UNAVAILABLE);
+			throw new SdlException("SDL is not connected. Unable to get the vehicleType.", SdlExceptionCause.SDL_UNAVAILABLE);
 		}
 		return _audioPassThruCapabilities;
 	}
@@ -1367,6 +1403,33 @@ public class SdlProxyALM extends SdlProxyBase<IProxyListenerALM> {
 			throw new SdlException("SDL is not connected. Unable to get SupportedDiagModes.", SdlExceptionCause.SDL_UNAVAILABLE);
 		}
 		return _diagModes;
+	}	
+	
+	public HMICapabilities getHmiCapabilities() throws SdlException {
+		// Test if proxy has been disposed
+		if (_proxyDisposed) {
+			throw new SdlException("This object has been disposed, it is no long capable of executing methods.", SdlExceptionCause.SDL_PROXY_DISPOSED);
+		}
+
+		// Test SDL availability
+		if (!_appInterfaceRegisterd) {
+			throw new SdlException("SDL is not connected. Unable to get the HMICapabilities.", SdlExceptionCause.SDL_UNAVAILABLE);
+		}
+		return _hmiCapabilities;
+	}	
+	
+	
+	public String getSystemSoftwareVersion() throws SdlException {
+		// Test if proxy has been disposed
+		if (_proxyDisposed) {
+			throw new SdlException("This object has been disposed, it is no long capable of executing methods.", SdlExceptionCause.SDL_PROXY_DISPOSED);
+		}
+
+		// Test SDL availability
+		if (!_appInterfaceRegisterd) {
+			throw new SdlException("SDL is not connected. Unable to get the SystemSoftwareVersion.", SdlExceptionCause.SDL_UNAVAILABLE);
+		}
+		return _systemSoftwareVersion;
 	}	
 	
 	public boolean isAppResumeSuccess() throws SdlException {

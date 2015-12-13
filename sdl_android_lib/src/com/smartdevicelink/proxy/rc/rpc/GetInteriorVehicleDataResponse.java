@@ -15,7 +15,7 @@ public class GetInteriorVehicleDataResponse extends RPCResponse {
 	*Constructs a newly allocated GetInteriorVehicleDataResponse object
 	*/ 	
     public GetInteriorVehicleDataResponse() {
-        super(FunctionID.GET_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.GET_INTERIOR_VEHICLE_DATA.toString());
     }
     /**
     *<p>Constructs a newly allocated GetInteriorVehicleDataResponse object indicated by the Hashtable parameter</p>

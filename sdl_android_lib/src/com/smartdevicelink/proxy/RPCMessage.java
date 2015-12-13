@@ -2,6 +2,8 @@ package com.smartdevicelink.proxy;
 
 import java.util.Hashtable;
 
+import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
+
 
 public class RPCMessage extends RPCStruct  {
     public static final String KEY_REQUEST = "request";
@@ -25,12 +27,16 @@ public class RPCMessage extends RPCStruct  {
 	}
 	
 	public RPCMessage(String functionName, String messageType) {
-		function = new Hashtable<String, Object>();
-		this.messageType = messageType;
-		store.put(messageType, function);
+		function   = new Hashtable<String, Object>();
 		parameters = new Hashtable<String, Object>();
+		
+		this.messageType = messageType;
 		function.put(KEY_PARAMETERS, parameters);
-		function.put(KEY_FUNCTION_NAME, functionName);
+		
+		if (messageType != null)
+			store.put(messageType, function);
+		if (functionName != null)
+			function.put(KEY_FUNCTION_NAME, functionName);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -47,7 +53,6 @@ public class RPCMessage extends RPCStruct  {
 	protected String messageType;
 	protected Hashtable<String, Object> parameters;
 	protected Hashtable<String, Object> function;
-    protected OnUpdateListener onUpdateListener;
 
 	public String getFunctionName() {
 		return (String)function.get(KEY_FUNCTION_NAME);
@@ -58,7 +63,12 @@ public class RPCMessage extends RPCStruct  {
 	}
 
 	public String getMessageType() {
-		return messageType;
+		if (messageType.equals(KEY_REQUEST) || 
+			messageType.equals(KEY_RESPONSE) ||
+            messageType.equals(KEY_NOTIFICATION)) {
+			return messageType;
+		}
+		return null;
 	}
 	
 	public void setParameters(String functionName, Object value) {
@@ -72,11 +82,5 @@ public class RPCMessage extends RPCStruct  {
 	public Object getParameters(String functionName) {
 		return parameters.get(functionName);
 	}
-    public void setOnUpdateListener(OnUpdateListener listener){
-    	onUpdateListener = listener;
-    }
-    
-    public OnUpdateListener getOnUpdateListener(){
-    	return this.onUpdateListener;
-    }
+
 }

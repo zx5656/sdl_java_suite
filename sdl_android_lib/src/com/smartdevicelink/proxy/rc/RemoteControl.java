@@ -5,13 +5,14 @@ import java.util.Vector;
 
 import android.util.Log;
 
-import com.smartdevicelink.proxy.OnUpdateListener;
 import com.smartdevicelink.proxy.RPCMessage;
+import com.smartdevicelink.proxy.RPCResponse;
 import com.smartdevicelink.proxy.rc.datatypes.InteriorZone;
 import com.smartdevicelink.proxy.rc.datatypes.ModuleDescription;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
 import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilities;
 import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilitiesResponse;
+import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 
 public class RemoteControl {
 
@@ -55,10 +56,10 @@ public class RemoteControl {
 			get.setZone(zone);
 		}
 		
-		get.setOnUpdateListener(new OnUpdateListener(){
+		get.setOnRPCResponseListener(new OnRPCResponseListener(){
 
 			@Override
-			public void onFinish(int correlationId, RPCMessage message,long totalSize) {
+			public void onResponse(int correlationId, RPCResponse message) {
 				
 				GetInteriorVehicleDataCapabilitiesResponse resp = (GetInteriorVehicleDataCapabilitiesResponse)message;
 				List<ModuleDescription> caps = resp.getInteriorCapabilities();

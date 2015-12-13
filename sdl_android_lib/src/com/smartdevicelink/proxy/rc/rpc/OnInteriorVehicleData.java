@@ -16,7 +16,7 @@ public class OnInteriorVehicleData extends RPCNotification {
 	*Constructs a newly allocated OnInteriorVehicleData object
 	*/ 	
     public OnInteriorVehicleData() {
-        super(FunctionID.ON_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.ON_INTERIOR_VEHICLE_DATA.toString());
     }
     
     /**

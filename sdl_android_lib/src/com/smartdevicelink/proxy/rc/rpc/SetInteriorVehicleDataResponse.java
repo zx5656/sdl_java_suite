@@ -14,7 +14,7 @@ public class SetInteriorVehicleDataResponse extends RPCResponse {
 	*Constructs a newly allocated SetInteriorVehicleDataResponse object
 	*/ 	
     public SetInteriorVehicleDataResponse() {
-        super(FunctionID.SET_INTERIOR_VEHICLE_DATA);
+        super(FunctionID.SET_INTERIOR_VEHICLE_DATA.toString());
     }
     /**
     *<p>Constructs a newly allocated SetInteriorVehicleDataResponse object indicated by the Hashtable parameter</p>

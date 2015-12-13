@@ -25,14 +25,14 @@ public class GetInteriorVehicleDataCapabilities extends RPCRequest {
 	*Constructs a newly allocated GetInteriorVehicleDataCapabilities object
 	*/ 	
     public GetInteriorVehicleDataCapabilities() {
-        super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES);
+        super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES.toString());
     }
     
 	/**
 	 * Constructs a newly allocated GetInteriorVehicleDataCapabilities object using the supplied params
 	 */
 	public GetInteriorVehicleDataCapabilities(InteriorZone zone,ModuleType dataType) {
-		super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES);
+		super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES.toString());
 		setZone(zone);
 		setDataTypes(Arrays.asList(dataType)); //TODO check this works
 	}
@@ -41,7 +41,7 @@ public class GetInteriorVehicleDataCapabilities extends RPCRequest {
 	 * Constructs a newly allocated GetInteriorVehicleDataCapabilities object using the supplied params
 	 */
 	public GetInteriorVehicleDataCapabilities(InteriorZone zone,List<ModuleType> dataTypes) {
-		super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES);
+		super(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES.toString());
 		setZone(zone);
 		setDataTypes(dataTypes);
 	}
