@@ -4,6 +4,7 @@ import java.util.Hashtable;
 
 import com.smartdevicelink.proxy.rc.enums.DefrostZone;
 import com.smartdevicelink.proxy.rc.enums.ModuleType;
+import com.smartdevicelink.proxy.rc.enums.TemperatureUnit;
 import com.smartdevicelink.util.DebugTool;
 
 public class ClimateControlData extends ControlData {
@@ -11,6 +12,7 @@ public class ClimateControlData extends ControlData {
 	public static final String KEY_FAN_SPEED				= "fanSpeed";
 	public static final String KEY_CURRENT_TEMP				= "currentTemp";
 	public static final String KEY_DESIRED_TEMP				= "desiredTemp";
+	public static final String KEY_TEMP_UNIT				= "temperatureUnit";
 	public static final String KEY_AC_ENABLED				= "acEnable";
 	public static final String KEY_RECIRCULATE_AIR_ENABLED	= "recirculateAirEnable";
 	public static final String KEY_AUTO_MODE_ENABLED		= "autoModeEnable";
@@ -92,6 +94,39 @@ public class ClimateControlData extends ControlData {
 			store.put(KEY_DESIRED_TEMP, desiredTemp);
 		} else {
 			store.remove(KEY_DESIRED_TEMP);
+		}
+	}
+	
+	/**
+	 * 
+	 * @return a TemperatureUnit enum, or null if not included
+	 */
+	public TemperatureUnit getTemperatureUnit(){
+		 Object obj = store.get(KEY_TEMP_UNIT);
+		 if (obj instanceof TemperatureUnit) {
+	            return (TemperatureUnit) obj;
+	        } else if (obj instanceof String) {
+	        	TemperatureUnit unit = null;
+	            try {
+	                unit = TemperatureUnit.valueOf((String) obj);
+	            } catch (Exception e) {
+	                DebugTool.logError("Failed to parse " + getClass().getSimpleName() + "." + KEY_TEMP_UNIT, e);
+	            }
+	            return unit;
+	        }
+		
+		 return null;
+	}
+
+	/**
+	 * 
+	 * @param temperatureUnit Values of TemperatureUnit accepted. Null will remove key/value pair.
+	 */
+	public void setTemperatureUnit(TemperatureUnit temperatureUnit){
+		if (temperatureUnit!=null) {
+			store.put(KEY_TEMP_UNIT, temperatureUnit);
+		} else {
+			store.remove(KEY_TEMP_UNIT);
 		}
 	}
 	
