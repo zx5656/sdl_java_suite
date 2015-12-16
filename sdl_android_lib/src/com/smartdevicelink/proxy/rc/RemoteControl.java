@@ -84,6 +84,9 @@ public class RemoteControl {
 		this.zone = zone;
 	}
 	
+	public InteriorZone getZone(){
+		return this.zone;
+	}
 	/**
 	 * When getting capabilities it will overwrite the current list of modules. This keeps the list
 	 * up to date.
