@@ -2543,7 +2543,7 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
    					_proxyListener.onSystemRequestResponse((SystemRequestResponse)msg);
                     onRPCResponseReceived(msg);	
    				}
-            }else if (functionName.equals(FunctionID.BUTTON_PRESS)) {
+            }else if (functionName.equals(FunctionID.BUTTON_PRESS.toString())) {
    				final ButtonPressResponse msg = new ButtonPressResponse(hash);
    				if (_callbackToUIThread) {
    					// Run in UI thread
@@ -2558,7 +2558,7 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
    					_proxyListener.onButtonPressResponse(msg);
    					onRPCResponseReceived(msg);	
    				}
-            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES)) {
+            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA_CAPABILITIES.toString())) {
    				final GetInteriorVehicleDataCapabilitiesResponse msg = new GetInteriorVehicleDataCapabilitiesResponse(hash);
    				if (_callbackToUIThread) {
    					// Run in UI thread
@@ -2573,7 +2573,7 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
    					_proxyListener.onGetInteriorVehicleDataCapabilitiesResponse(msg);
                     onRPCResponseReceived(msg);	
    				}
-            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA)) {
+            }else if (functionName.equals(FunctionID.GET_INTERIOR_VEHICLE_DATA.toString())) {
    				final GetInteriorVehicleDataResponse msg = new GetInteriorVehicleDataResponse(hash);
    				if (_callbackToUIThread) {
    					// Run in UI thread
@@ -2588,7 +2588,7 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
    					_proxyListener.onGetInteriorVehicleDataResponse(msg);
                     onRPCResponseReceived(msg);	
    				}
-            }else if (functionName.equals(FunctionID.SET_INTERIOR_VEHICLE_DATA)) {
+            }else if (functionName.equals(FunctionID.SET_INTERIOR_VEHICLE_DATA.toString())) {
    				final SetInteriorVehicleDataResponse msg = new SetInteriorVehicleDataResponse(hash);
    				if (_callbackToUIThread) {
    					// Run in UI thread
@@ -3064,7 +3064,7 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 					_proxyListener.onOnTouchEvent((OnTouchEvent)msg);
 					onRPCNotificationReceived(msg);
 				}
-			}else if (functionName.equals(FunctionID.ON_INTERIOR_VEHICLE_DATA)) {
+			}else if (functionName.equals(FunctionID.ON_INTERIOR_VEHICLE_DATA.toString())) {
 				final OnInteriorVehicleData msg = new OnInteriorVehicleData(hash);
 				if (_callbackToUIThread) {
 					// Run in UI thread
