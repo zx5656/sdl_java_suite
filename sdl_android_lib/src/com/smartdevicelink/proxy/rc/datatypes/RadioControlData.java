@@ -60,7 +60,7 @@ public class RadioControlData extends ControlData{
 	 * @return
 	 */
 	public Integer getFrequencyFraction(){
-		return (Integer) store.get(KEY_FREQUENCY_INTEGER);
+		return (Integer) store.get(KEY_FREQUENCY_FRACTION);
 	}
 
 	public void setFrequencyFraction(Integer freqFrac){
