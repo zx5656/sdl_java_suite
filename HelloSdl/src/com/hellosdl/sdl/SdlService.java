@@ -17,6 +17,11 @@ import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
 import com.smartdevicelink.proxy.callbacks.OnServiceNACKed;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
+import com.smartdevicelink.proxy.rc.rpc.ButtonPressResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataCapabilitiesResponse;
+import com.smartdevicelink.proxy.rc.rpc.GetInteriorVehicleDataResponse;
+import com.smartdevicelink.proxy.rc.rpc.OnInteriorVehicleData;
+import com.smartdevicelink.proxy.rc.rpc.SetInteriorVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.AddCommandResponse;
 import com.smartdevicelink.proxy.rpc.AddSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.AlertManeuverResponse;
@@ -681,6 +686,49 @@ public class SdlService extends Service implements IProxyListenerALM{
 
 	@Override
 	public void onServiceDataACK() {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+	@Override
+	public void onButtonPressResponse(ButtonPressResponse response) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+	@Override
+	public void onGetInteriorVehicleDataCapabilitiesResponse(
+			GetInteriorVehicleDataCapabilitiesResponse response) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+	@Override
+	public void onGetInteriorVehicleDataResponse(
+			GetInteriorVehicleDataResponse response) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+	@Override
+	public void onSetInteriorVehicleDataResponse(
+			SetInteriorVehicleDataResponse response) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+	@Override
+	public void onOnInteriorVehicleData(OnInteriorVehicleData notification) {
 		// TODO Auto-generated method stub
 		
 	}
