@@ -58,6 +58,7 @@ import com.smartdevicelink.proxy.callbacks.OnServiceNACKed;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerBase;
 import com.smartdevicelink.proxy.interfaces.IPutFileResponseListener;
+import com.smartdevicelink.proxy.interfaces.ISdlServiceListener;
 import com.smartdevicelink.proxy.rpc.*;
 import com.smartdevicelink.proxy.rpc.enums.AppHMIType;
 import com.smartdevicelink.proxy.rpc.enums.AudioStreamingState;
@@ -89,6 +90,7 @@ import com.smartdevicelink.proxy.rpc.listeners.OnRPCNotificationListener;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 import com.smartdevicelink.security.SdlSecurityBase;
 import com.smartdevicelink.streaming.StreamRPCPacketizer;
+import com.smartdevicelink.streaming.StreamWriterThread;
 import com.smartdevicelink.trace.SdlTrace;
 import com.smartdevicelink.trace.TraceDeviceInfo;
 import com.smartdevicelink.trace.enums.InterfaceActivityDirection;
@@ -106,7 +108,10 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 	
 	private SdlSession sdlSession = null;
 	private proxyListenerType _proxyListener = null;
-	
+
+	private ISdlServiceListener _sdlServiceListener = null;
+	private StreamWriterThread _videoStreamWriter = null;
+
 	protected Service _appService = null;
 	private String sPoliciesURL = ""; //for testing only
 
@@ -333,9 +338,9 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 					RPCProtectedServiceStarted();
 				}
 			} else if (sessionType.eq(SessionType.NAV)) {
-				NavServiceStarted();
+				NavServiceStarted(isEncrypted);
 			} else if (sessionType.eq(SessionType.PCM)) {
-				AudioServiceStarted();
+				AudioServiceStarted(isEncrypted);
 			} else if (sessionType.eq(SessionType.RPC)){
 				cycleProxy(SdlDisconnectedReason.RPC_SESSION_ENDED);
 			}
@@ -3495,7 +3500,29 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 	}
 	public ScheduledExecutorService createScheduler(){
 		return  Executors.newSingleThreadScheduledExecutor();
-	}	
+	}
+
+	public void setSdlServiceListener(ISdlServiceListener sdlServiceListener) {
+		_sdlServiceListener = sdlServiceListener;
+	}
+
+	public void setVideoStreamWriter(StreamWriterThread videoStreamWriter) {
+		_videoStreamWriter = videoStreamWriter;
+	}
+
+	public void startSdlService(boolean isEncrypted, SessionType serviceType) {
+		if (sdlSession == null) return; //log an error here
+		if (_sdlServiceListener == null) return; //log an error here
+
+		sdlSession.startService(serviceType, sdlSession.getSessionId(), isEncrypted);
+	}
+
+	public void endSdlService(SessionType serviceType) {
+		if (sdlSession == null) return; //log an error here
+		if (_sdlServiceListener == null) return; //log an error here
+
+		sdlSession.endService(serviceType, sdlSession.getSessionId());
+	}
 
 	/**
 	 *Opens the video service (serviceType 11) and subsequently streams raw H264 video from an InputStream provided by the app
@@ -3792,48 +3819,78 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
         sdlSession.drainEncoder(endOfStream);
     }
 	
-	private void NavServiceStarted() {
+	private void NavServiceStarted(boolean isEncrypted) {
 		navServiceStartResponseReceived = true;
 		navServiceStartResponse = true;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceStarted(SessionType.NAV, isEncrypted);
+
+		if (_videoStreamWriter != null)
+			_videoStreamWriter.handleSdlSession(sdlSession);
 	}
 	
 	private void NavServiceStartedNACK() {
 		navServiceStartResponseReceived = true;
 		navServiceStartResponse = false;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceStartedNacked(SessionType.NAV);
 	}
 	
-    private void AudioServiceStarted() {
+    private void AudioServiceStarted(boolean isEncrypted) {
 		pcmServiceStartResponseReceived = true;
 		pcmServiceStartResponse = true;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceStarted(SessionType.PCM, isEncrypted);
 	}
     
     private void RPCProtectedServiceStarted() {
     	rpcProtectedResponseReceived = true;
     	rpcProtectedStartResponse = true;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceStarted(SessionType.RPC, true);
 	}
     private void AudioServiceStartedNACK() {
 		pcmServiceStartResponseReceived = true;
 		pcmServiceStartResponse = false;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceStartedNacked(SessionType.PCM);
 	}
 
 	private void NavServiceEnded() {
 		navServiceEndResponseReceived = true;
 		navServiceEndResponse = true;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceEnded(SessionType.NAV);
 	}
 	
 	private void NavServiceEndedNACK() {
 		navServiceEndResponseReceived = true;
 		navServiceEndResponse = false;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceEndedNacked(SessionType.NAV);
 	}
 	
     private void AudioServiceEnded() {
 		pcmServiceEndResponseReceived = true;
 		pcmServiceEndResponse = true;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceEnded(SessionType.PCM);
 	}
 	
     private void AudioServiceEndedNACK() {
 		pcmServiceEndResponseReceived = true;
 		pcmServiceEndResponse = false;
+
+		if (_sdlServiceListener != null)
+			_sdlServiceListener.onSdlServiceEndedNacked(SessionType.PCM);
 	}	
 	
 	public void setAppService(Service mService)

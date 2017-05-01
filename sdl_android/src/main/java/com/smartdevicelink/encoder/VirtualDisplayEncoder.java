@@ -22,14 +22,16 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import com.smartdevicelink.protocol.enums.SessionType;
+import com.smartdevicelink.proxy.SdlProxyALM;
+import com.smartdevicelink.proxy.SdlProxyBase;
 import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.ScreenParams;
 import com.smartdevicelink.proxy.rpc.TouchCoord;
 import com.smartdevicelink.proxy.rpc.TouchEvent;
 import com.smartdevicelink.proxy.rpc.enums.TouchType;
+import com.smartdevicelink.streaming.StreamWriterThread;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -48,15 +50,17 @@ public class VirtualDisplayEncoder {
     private volatile VirtualDisplay virtualDisplay = null;
     private volatile SdlPresentation presentation = null;
     private Class<? extends SdlPresentation> presentationClass = null;
-    private VideoStreamWriterThread streamWriterThread = null;
+    private StreamWriterThread streamWriterThread = null;
     private Context mContext;
-    private OutputStream sdlOutStream = null;
     private Boolean initPassed = false;
     private Handler uiHandler = new Handler(Looper.getMainLooper());
     private final static int REFRESH_RATE_MS = 100;
     private final static Object CLOSE_VID_SESSION_LOCK = new Object();
     private final static Object START_DISP_LOCK = new Object();
     private final static Object STREAMING_LOCK = new Object();
+    private static Integer SLEEP_TIME = 5; //milliseconds
+    private static Integer MAX_SLEEP_DURATION = 500; //milliseconds
+
 
     public class StreamingParameters {
         protected int displayDensity = DisplayMetrics.DENSITY_HIGH;
@@ -141,29 +145,37 @@ public class VirtualDisplayEncoder {
      * @param screenParams
      * @throws Exception
      */
-    public void init(Context context, OutputStream videoStream, Class<? extends SdlPresentation> presentationClass, ScreenParams screenParams) throws Exception {
+    public void init(Context context, SdlProxyALM sdlProxy, Class<? extends SdlPresentation> presentationClass) throws Exception {
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             Log.e(TAG, "API level of 21 required for VirtualDisplayEncoder");
             throw new Exception("API level of 21 required");
+        }
+
+        if (context == null || sdlProxy == null || presentationClass == null) {
+            Log.e(TAG, "init parameters cannot be null for VirtualDisplayEncoder");
+            throw new Exception("init parameters cannot be null");
         }
 
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
 
         mContext = context;
 
+        //need to check for null values
+        ScreenParams screenParams = sdlProxy.getDisplayCapabilities().getScreenParams();
+
+        //need to check image resolution for null
         if(screenParams.getImageResolution().getResolutionHeight() != null){
             streamingParams.videoHeight = screenParams.getImageResolution().getResolutionHeight();
         }
 
+        //need to check image resolution for null
         if(screenParams.getImageResolution().getResolutionWidth() != null){
             streamingParams.videoWidth = screenParams.getImageResolution().getResolutionWidth();
         }
 
-        sdlOutStream = videoStream;
-
         this.presentationClass = presentationClass;
 
-        setupVideoStreamWriter();
+        setupVideoStreamWriter(sdlProxy);
 
         initPassed = true;
     }
@@ -240,20 +252,8 @@ public class VirtualDisplayEncoder {
     private void closeVideoSession() {
 
         synchronized (CLOSE_VID_SESSION_LOCK) {
-            if (sdlOutStream != null) {
-
-                try {
-                    sdlOutStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                sdlOutStream = null;
-
-                if (streamWriterThread != null) {
-                    streamWriterThread.clearOutputStream();
-                    streamWriterThread.clearByteBuffer();
-                }
+            if (streamWriterThread != null) {
+                streamWriterThread.clearByteBuffer();
             }
         }
     }
@@ -390,18 +390,18 @@ public class VirtualDisplayEncoder {
     }
 
     private void onStreamDataAvailable(byte[] data, int size) {
-        if (sdlOutStream != null) {
-            try {
-                if (streamWriterThread.getOutputStream() == null) {
-                    streamWriterThread.setOutputStream(sdlOutStream);
-                }
-
-                streamWriterThread.setByteBuffer(data, size);
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            Integer totalSleep = 0;
+            while (streamWriterThread.getByteBuffer() != null) {
+                Thread.sleep(SLEEP_TIME); //try to sleep until the byte buffer is clear
+                totalSleep = totalSleep + SLEEP_TIME;
+                if (totalSleep >= MAX_SLEEP_DURATION)
+                    break;
             }
-        } else {
-            Log.e(TAG, "sdlOutStream is null");
+
+            streamWriterThread.setByteBuffer(data, size);
+        } catch (Exception e) {
+                e.printStackTrace();
         }
     }
 
@@ -539,10 +539,10 @@ public class VirtualDisplayEncoder {
         });
     }
 
-    private void setupVideoStreamWriter() {
+    private void setupVideoStreamWriter(SdlProxyALM sdlProxy) {
         if (streamWriterThread == null) {
             // Setup VideoStreamWriterThread thread
-            streamWriterThread = new VideoStreamWriterThread();
+            streamWriterThread = new StreamWriterThread(sdlProxy, SessionType.NAV);
             streamWriterThread.setName("VideoStreamWriter");
             streamWriterThread.setPriority(Thread.MAX_PRIORITY);
             streamWriterThread.setDaemon(true);
@@ -560,93 +560,8 @@ public class VirtualDisplayEncoder {
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-
-            streamWriterThread.clearOutputStream();
             streamWriterThread.clearByteBuffer();
         }
         streamWriterThread = null;
     }
-
-    private class VideoStreamWriterThread extends Thread {
-        private Boolean isHalted = false;
-        private byte[] buf = null;
-        private Integer size = 0;
-        private OutputStream os = null;
-
-        public OutputStream getOutputStream() {
-            return os;
-        }
-
-        public byte[] getByteBuffer() {
-            return buf;
-        }
-
-        public void setOutputStream(OutputStream os) {
-            synchronized (STREAMING_LOCK) {
-                clearOutputStream();
-                this.os = os;
-            }
-        }
-
-        public void setByteBuffer(byte[] buf, Integer size) {
-            synchronized (STREAMING_LOCK) {
-                clearByteBuffer();
-                this.buf = buf;
-                this.size = size;
-            }
-        }
-
-        private void clearOutputStream() {
-            synchronized (STREAMING_LOCK) {
-                try {
-                    if (os != null) {
-                        os.close();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                os = null;
-            }
-        }
-
-        private void clearByteBuffer() {
-            synchronized (STREAMING_LOCK) {
-                try {
-                    if (buf != null) {
-                        buf = null;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        private void writeToStream() {
-            synchronized (STREAMING_LOCK) {
-                if (buf == null || os == null)
-                    return;
-
-                try {
-                    os.write(buf, 0, size);
-                    clearByteBuffer();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }
-
-        public void run() {
-            while (!isHalted) {
-                writeToStream();
-            }
-        }
-
-        /**
-         * Method that marks thread as halted.
-         */
-        public void halt() {
-            isHalted = true;
-        }
-    }
-
 }
