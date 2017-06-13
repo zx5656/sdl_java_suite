@@ -1,17 +1,18 @@
 package com.smartdevicelink.streaming;
 
-import com.smartdevicelink.SdlConnection.SdlSession;
 import com.smartdevicelink.protocol.ProtocolMessage;
 import com.smartdevicelink.protocol.enums.SessionType;
-import com.smartdevicelink.proxy.SdlProxyALM;
+import com.smartdevicelink.proxy.SdlProxyBase;
 
 public class StreamWriterThread extends Thread {
     private Boolean isHalted = false;
     private byte[] buf = null;
     private Integer size = 0;
-    private final static Object lock = new Object();
     private SessionType serviceType;
-    private SdlSession sdlSession;
+    private SdlProxyBase proxy;
+    public Boolean isWaiting = false;
+    private final static Object lock = new Object();
+    public final static Object BUFFER_LOCK = new Object();
 
     private boolean isServiceProtected;
     private final static int TLS_MAX_RECORD_SIZE = 16384;
@@ -21,20 +22,14 @@ public class StreamWriterThread extends Thread {
     private final static int ENC_READ_SIZE = TLS_MAX_RECORD_SIZE - TLS_RECORD_HEADER_SIZE - TLS_RECORD_MES_AUTH_CDE_SIZE - TLS_MAX_RECORD_PADDING_SIZE;
 
 
-    public StreamWriterThread(SdlProxyALM sdlProxy, SessionType serviceType) {
-        if (sdlProxy == null){
-            return;
-        }
-        sdlProxy.setVideoStreamWriter(this);
+    public StreamWriterThread(SdlProxyBase proxy, SessionType serviceType) {
+        this.proxy = proxy;
+        this.isServiceProtected = proxy.isServiceTypeProtected(serviceType);
         this.serviceType = serviceType;
-    }
 
-    public void handleSdlSession(SdlSession sdlSession){
-        if (sdlSession == null){
-            return;
-        }
-        this.sdlSession = sdlSession;
-        isServiceProtected = sdlSession.isServiceProtected(serviceType);
+        this.setName(serviceType.getName()+"StreamWriter");
+        this.setPriority(Thread.MAX_PRIORITY);
+        this.setDaemon(true);
     }
 
     public byte[] getByteBuffer() {
@@ -43,7 +38,7 @@ public class StreamWriterThread extends Thread {
         }
     }
 
-    public void setByteBuffer(byte[] buf, Integer size) {
+    public void setByteBuffer(byte[] buf, Integer size){
         synchronized (lock) {
             this.buf = buf;
             this.size = size;
@@ -64,7 +59,7 @@ public class StreamWriterThread extends Thread {
 
     private ProtocolMessage createStreamPacket(byte[] byteData) {
         ProtocolMessage pm = new ProtocolMessage();
-        pm.setSessionID(sdlSession.getSessionId());
+        pm.setSessionID(proxy.getSessionId());
         pm.setSessionType(serviceType);
         pm.setFunctionID(0);
         pm.setCorrID(0);
@@ -73,7 +68,7 @@ public class StreamWriterThread extends Thread {
         return pm;
     }
 
-    public static byte[][] divideArray(byte[] source, int chunksize) {
+    private static byte[][] divideArray(byte[] source, int chunksize) {
         byte[][] ret = new byte[(int)Math.ceil(source.length / (double)chunksize)][chunksize];
 
         int start = 0;
@@ -92,7 +87,7 @@ public class StreamWriterThread extends Thread {
 
     private void writeToStream() {
         synchronized (lock) {
-            if (buf == null || sdlSession == null) return;
+            if (buf == null || proxy == null) return;
 
             try {
                 if (isServiceProtected && buf.length > ENC_READ_SIZE){
@@ -100,12 +95,12 @@ public class StreamWriterThread extends Thread {
                     for(int i = 0; i < ret.length; i++) {
                         byte[] byteData = ret[i];
                         ProtocolMessage pm = createStreamPacket(byteData);
-                        sdlSession.sendStreamPacket(pm);
+                        proxy.sendStreamPacket(pm);
                     }
                 }
                 else {
                     ProtocolMessage pm = createStreamPacket(buf);
-                    sdlSession.sendStreamPacket(pm);
+                    proxy.sendStreamPacket(pm);
                 }
 
                 clearByteBuffer();
@@ -118,6 +113,11 @@ public class StreamWriterThread extends Thread {
     public void run() {
         while (!isHalted) {
             writeToStream();
+            if(isWaiting){
+                synchronized (BUFFER_LOCK){
+                    BUFFER_LOCK.notify();
+                }
+            }
         }
     }
 

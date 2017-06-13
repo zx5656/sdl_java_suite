@@ -1,14 +1,5 @@
 package com.smartdevicelink.SdlConnection;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.util.Log;
@@ -22,6 +13,7 @@ import com.smartdevicelink.protocol.heartbeat.IHeartbeatMonitor;
 import com.smartdevicelink.protocol.heartbeat.IHeartbeatMonitorListener;
 import com.smartdevicelink.proxy.LockScreenManager;
 import com.smartdevicelink.proxy.RPCRequest;
+import com.smartdevicelink.proxy.interfaces.ISdlServiceListener;
 import com.smartdevicelink.security.ISecurityInitializedListener;
 import com.smartdevicelink.security.SdlSecurityBase;
 import com.smartdevicelink.streaming.IStreamListener;
@@ -30,6 +22,16 @@ import com.smartdevicelink.streaming.StreamRPCPacketizer;
 import com.smartdevicelink.transport.BaseTransportConfig;
 import com.smartdevicelink.transport.MultiplexTransport;
 import com.smartdevicelink.transport.enums.TransportType;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorListener, IStreamListener, ISecurityInitializedListener {
 	private static CopyOnWriteArrayList<SdlConnection> shareConnections = new CopyOnWriteArrayList<SdlConnection>();
@@ -51,8 +53,8 @@ public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorList
 	SdlEncoder mSdlEncoder = null;
 	private final static int BUFF_READ_SIZE = 1024;
     private int sessionHashId = 0;
+	private HashMap<SessionType, ISdlServiceListener> serviceListeners = new HashMap<>();
 
-    
 	public static SdlSession createSession(byte wiproVersion, ISdlConnectionListener listener, BaseTransportConfig btConfig) {
 		
 		SdlSession session =  new SdlSession();
@@ -331,7 +333,7 @@ public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorList
 		return sdlSecurity;
 	}
 	
-	public void startService (SessionType serviceType, byte sessionID, boolean isEncrypted) {
+	public void startService(SessionType serviceType, byte sessionID, boolean isEncrypted) {
 		if (_sdlConnection == null) 
 			return;
 		
@@ -350,10 +352,16 @@ public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorList
 		_sdlConnection.startService(serviceType, sessionID, isEncrypted);		
 	}
 	
-	public void endService (SessionType serviceType, byte sessionID) {
+	public void endService(SessionType serviceType, byte sessionID) {
 		if (_sdlConnection == null) 
 			return;
 		_sdlConnection.endService(serviceType, sessionID);	
+	}
+
+	public void setServiceListener(SessionType serviceType, ISdlServiceListener sdlServiceListener){
+		if(serviceType != null && sdlServiceListener != null){
+			serviceListeners.put(serviceType, sdlServiceListener);
+		}
 	}
 	
 	private void processControlService(ProtocolMessage msg) {
@@ -595,5 +603,9 @@ public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorList
 	}
 	public static boolean removeConnection(SdlConnection connection){
 		return shareConnections.remove(connection);
+	}
+
+	public HashMap<SessionType, ISdlServiceListener> getServiceListeners(){
+		return serviceListeners;
 	}
 }

@@ -22,9 +22,10 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import com.smartdevicelink.SdlConnection.SdlSession;
 import com.smartdevicelink.protocol.enums.SessionType;
-import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.SdlProxyBase;
+import com.smartdevicelink.proxy.interfaces.ISdlServiceListener;
 import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.ScreenParams;
 import com.smartdevicelink.proxy.rpc.TouchCoord;
@@ -52,6 +53,7 @@ public class VirtualDisplayEncoder {
     private Class<? extends SdlPresentation> presentationClass = null;
     private StreamWriterThread streamWriterThread = null;
     private Context mContext;
+    private SdlProxyBase proxy;
     private Boolean initPassed = false;
     private Handler uiHandler = new Handler(Looper.getMainLooper());
     private final static int REFRESH_RATE_MS = 100;
@@ -61,97 +63,21 @@ public class VirtualDisplayEncoder {
     private static Integer SLEEP_TIME = 5; //milliseconds
     private static Integer MAX_SLEEP_DURATION = 500; //milliseconds
 
-
-    public class StreamingParameters {
-        protected int displayDensity = DisplayMetrics.DENSITY_HIGH;
-        protected int videoWidth = 800;
-        protected int videoHeight = 480;
-        protected int frameRate = 24;
-        protected int bitrate = 512000;
-        protected int interval = 5;
-
-        public StreamingParameters(){
-            // empty
-        }
-
-        public StreamingParameters(int displayDensity, int videoWidth, int videoHeight, int frameRate, int bitrate, int interval) {
-            this.displayDensity = displayDensity;
-            this.videoWidth = videoWidth;
-            this.videoHeight = videoHeight;
-            this.frameRate = frameRate;
-            this.bitrate = bitrate;
-            this.interval = interval;
-        }
-
-        /**
-         * Set displayDensity to a value from DisplayMetrics
-         * @param displayDensity
-         */
-        public void setDisplayDensity(int displayDensity) {
-            this.displayDensity = displayDensity;
-        }
-
-        public int getDisplayDensity() {
-            return displayDensity;
-        }
-
-        public void setVideoWidth(int videoWidth) {
-            this.videoWidth = videoWidth;
-        }
-
-        public int getVideoWidth() {
-            return videoWidth;
-        }
-
-        public void setVideoHeight(int videoHeight) {
-            this.videoHeight = videoHeight;
-        }
-
-        public int getVideoHeight() {
-            return videoHeight;
-        }
-
-        public void setFrameRate(int frameRate) {
-            this.frameRate = frameRate;
-        }
-
-        public int getFrameRate() {
-            return frameRate;
-        }
-
-        public void setBitrate(int bitrate) {
-            this.bitrate = bitrate;
-        }
-
-        public int getBitrate() {
-            return bitrate;
-        }
-
-        public void setInterval(int interval) {
-            this.interval = interval;
-        }
-
-        public int getInterval() {
-            return interval;
-        }
-    }
-
     /**
      * Initialization method for VirtualDisplayEncoder object. MUST be called before start() or shutdown()
      * Will overwrite previously set videoWeight and videoHeight
      * @param context
-     * @param videoStream
      * @param presentationClass
      * @param screenParams
      * @throws Exception
      */
-    public void init(Context context, SdlProxyALM sdlProxy, Class<? extends SdlPresentation> presentationClass) throws Exception {
+    public void init(Context context, SdlProxyBase proxyALM, Class<? extends SdlPresentation> presentationClass, ScreenParams screenParams) throws Exception {
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             Log.e(TAG, "API level of 21 required for VirtualDisplayEncoder");
             throw new Exception("API level of 21 required");
         }
 
-        if (context == null || sdlProxy == null || presentationClass == null) {
+        if (context == null || screenParams == null || presentationClass == null) {
             Log.e(TAG, "init parameters cannot be null for VirtualDisplayEncoder");
             throw new Exception("init parameters cannot be null");
         }
@@ -159,9 +85,7 @@ public class VirtualDisplayEncoder {
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
 
         mContext = context;
-
-        //need to check for null values
-        ScreenParams screenParams = sdlProxy.getDisplayCapabilities().getScreenParams();
+        proxy = proxyALM;
 
         //need to check image resolution for null
         if(screenParams.getImageResolution().getResolutionHeight() != null){
@@ -175,7 +99,7 @@ public class VirtualDisplayEncoder {
 
         this.presentationClass = presentationClass;
 
-        setupVideoStreamWriter(sdlProxy);
+        setupVideoStreamWriter();
 
         initPassed = true;
     }
@@ -391,17 +315,9 @@ public class VirtualDisplayEncoder {
 
     private void onStreamDataAvailable(byte[] data, int size) {
         try {
-            Integer totalSleep = 0;
-            while (streamWriterThread.getByteBuffer() != null) {
-                Thread.sleep(SLEEP_TIME); //try to sleep until the byte buffer is clear
-                totalSleep = totalSleep + SLEEP_TIME;
-                if (totalSleep >= MAX_SLEEP_DURATION)
-                    break;
-            }
-
-            streamWriterThread.setByteBuffer(data, size);
+            proxy.writeToStream(SessionType.NAV, data, size);
         } catch (Exception e) {
-                e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
@@ -539,29 +455,105 @@ public class VirtualDisplayEncoder {
         });
     }
 
-    private void setupVideoStreamWriter(SdlProxyALM sdlProxy) {
+    private void setupVideoStreamWriter() {
         if (streamWriterThread == null) {
             // Setup VideoStreamWriterThread thread
-            streamWriterThread = new StreamWriterThread(sdlProxy, SessionType.NAV);
-            streamWriterThread.setName("VideoStreamWriter");
-            streamWriterThread.setPriority(Thread.MAX_PRIORITY);
-            streamWriterThread.setDaemon(true);
-            streamWriterThread.start();
+            proxy.setServiceListener(SessionType.NAV, new ISdlServiceListener() {
+                @Override
+                public void onServiceStarted(SdlSession session, SessionType type, boolean isEncrypted) {
+                    Log.i(TAG, type.getName() + " service started.");
+                }
+
+                @Override
+                public void onServiceEnded(SdlSession session, SessionType type) {
+                    Log.i(TAG, type.getName() + " service ended.");
+                }
+
+                @Override
+                public void onServiceError(SdlSession session, SessionType type, String reason) {
+                    Log.i(TAG, type.getName() + " service error - " + reason);
+                }
+            });
+
+            proxy.startService(SessionType.NAV, false);
         }
     }
 
     private void releaseVideoStreamWriter() {
-        if (streamWriterThread != null) {
+        proxy.endService(SessionType.NAV);
+    }
 
-            streamWriterThread.halt();
+    public class StreamingParameters {
+        protected int displayDensity = DisplayMetrics.DENSITY_HIGH;
+        protected int videoWidth = 800;
+        protected int videoHeight = 480;
+        protected int frameRate = 24;
+        protected int bitrate = 512000;
+        protected int interval = 5;
 
-            try {
-                streamWriterThread.interrupt();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-            streamWriterThread.clearByteBuffer();
+        public StreamingParameters(){
+            // empty
         }
-        streamWriterThread = null;
+
+        public StreamingParameters(int displayDensity, int videoWidth, int videoHeight, int frameRate, int bitrate, int interval) {
+            this.displayDensity = displayDensity;
+            this.videoWidth = videoWidth;
+            this.videoHeight = videoHeight;
+            this.frameRate = frameRate;
+            this.bitrate = bitrate;
+            this.interval = interval;
+        }
+
+        /**
+         * Set displayDensity to a value from DisplayMetrics
+         * @param displayDensity
+         */
+        public void setDisplayDensity(int displayDensity) {
+            this.displayDensity = displayDensity;
+        }
+
+        public int getDisplayDensity() {
+            return displayDensity;
+        }
+
+        public void setVideoWidth(int videoWidth) {
+            this.videoWidth = videoWidth;
+        }
+
+        public int getVideoWidth() {
+            return videoWidth;
+        }
+
+        public void setVideoHeight(int videoHeight) {
+            this.videoHeight = videoHeight;
+        }
+
+        public int getVideoHeight() {
+            return videoHeight;
+        }
+
+        public void setFrameRate(int frameRate) {
+            this.frameRate = frameRate;
+        }
+
+        public int getFrameRate() {
+            return frameRate;
+        }
+
+        public void setBitrate(int bitrate) {
+            this.bitrate = bitrate;
+        }
+
+        public int getBitrate() {
+            return bitrate;
+        }
+
+        public void setInterval(int interval) {
+            this.interval = interval;
+        }
+
+        public int getInterval() {
+            return interval;
+        }
     }
 }

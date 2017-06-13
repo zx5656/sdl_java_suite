@@ -1,11 +1,10 @@
 package com.smartdevicelink.proxy;
 
-import java.util.List;
-import java.util.Vector;
+import android.app.Service;
+import android.content.Context;
 
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
-import com.smartdevicelink.proxy.interfaces.ISdlServiceListener;
 import com.smartdevicelink.proxy.rpc.SdlMsgVersion;
 import com.smartdevicelink.proxy.rpc.TTSChunk;
 import com.smartdevicelink.proxy.rpc.enums.AppHMIType;
@@ -15,8 +14,8 @@ import com.smartdevicelink.transport.BTTransportConfig;
 import com.smartdevicelink.transport.BaseTransportConfig;
 import com.smartdevicelink.transport.MultiplexTransportConfig;
 
-import android.app.Service;
-import android.content.Context;
+import java.util.List;
+import java.util.Vector;
 
 public class SdlProxyBuilder
 {
@@ -41,8 +40,6 @@ public class SdlProxyBuilder
 	private String sAppResumeHash;
 	private BaseTransportConfig mTransport;
 	private List<Class<? extends SdlSecurityBase>> sdlSecList;
-	private ISdlServiceListener sdlServiceListener;
-
 
 	public static class Builder
 	{
@@ -69,7 +66,6 @@ public class SdlProxyBuilder
 	    private String sAppResumeHash = null;
 	    private List<Class<? extends SdlSecurityBase>> sdlSecList = null;
 	    private BaseTransportConfig mTransport; //Initialized in constructor
-		private ISdlServiceListener sdlServiceListener = null;
 	    
 	    /**
 	     * @deprecated Use Builder(IProxyListenerALM, String, String, Boolean, Context) instead
@@ -124,15 +120,12 @@ public class SdlProxyBuilder
 	    	{ mTransport = val; return this; }
 	    public Builder setSdlSecurity(List<Class<? extends SdlSecurityBase>> val)
     		{ sdlSecList = val; return this; }
-		public Builder setSdlServiceListener(ISdlServiceListener val)
-		{ sdlServiceListener = val; return this; }
 	        
         public SdlProxyALM build() throws SdlException
         {
         	SdlProxyBuilder obj = new SdlProxyBuilder(this);
         	SdlProxyALM proxy = new SdlProxyALM(obj.service,obj.listener,obj.sdlProxyConfigurationResources,obj.appName,obj.ttsChunks,obj.sShortAppName,obj.vrSynonyms,obj.isMediaApp,obj.sdlMessageVersion,obj.lang,obj.hmiLang,obj.vrAppHMITypes,obj.appId,obj.autoActivateID,obj.callbackToUIThread,obj.preRegister,obj.sAppResumeHash,obj.mTransport);
         	proxy.setSdlSecurityClassList(obj.sdlSecList);
-			proxy.setSdlServiceListener(obj.sdlServiceListener);
         	return proxy;
         }
 	}
@@ -159,7 +152,6 @@ public class SdlProxyBuilder
 		sAppResumeHash = builder.sAppResumeHash;
 		mTransport = builder.mTransport;
 		sdlSecList = builder.sdlSecList;
-		sdlServiceListener = builder.sdlServiceListener;
 	}
 }
 

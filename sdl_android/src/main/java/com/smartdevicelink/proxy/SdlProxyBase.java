@@ -1,30 +1,5 @@
 package com.smartdevicelink.proxy;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Vector;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.ScheduledExecutorService;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -99,6 +74,35 @@ import com.smartdevicelink.transport.SiphonServer;
 import com.smartdevicelink.transport.enums.TransportType;
 import com.smartdevicelink.util.DebugTool;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.ScheduledExecutorService;
+
+import static com.smartdevicelink.streaming.StreamWriterThread.BUFFER_LOCK;
+
 public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase> {
 	// Used for calls to Android Log class.
 	public static final String TAG = "SdlProxy";
@@ -108,9 +112,6 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 	
 	private SdlSession sdlSession = null;
 	private proxyListenerType _proxyListener = null;
-
-	private ISdlServiceListener _sdlServiceListener = null;
-	private StreamWriterThread _videoStreamWriter = null;
 
 	protected Service _appService = null;
 	private String sPoliciesURL = ""; //for testing only
@@ -3502,28 +3503,6 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		return  Executors.newSingleThreadScheduledExecutor();
 	}
 
-	public void setSdlServiceListener(ISdlServiceListener sdlServiceListener) {
-		_sdlServiceListener = sdlServiceListener;
-	}
-
-	public void setVideoStreamWriter(StreamWriterThread videoStreamWriter) {
-		_videoStreamWriter = videoStreamWriter;
-	}
-
-	public void startSdlService(boolean isEncrypted, SessionType serviceType) {
-		if (sdlSession == null) return; //log an error here
-		if (_sdlServiceListener == null) return; //log an error here
-
-		sdlSession.startService(serviceType, sdlSession.getSessionId(), isEncrypted);
-	}
-
-	public void endSdlService(SessionType serviceType) {
-		if (sdlSession == null) return; //log an error here
-		if (_sdlServiceListener == null) return; //log an error here
-
-		sdlSession.endService(serviceType, sdlSession.getSessionId());
-	}
-
 	/**
 	 *Opens the video service (serviceType 11) and subsequently streams raw H264 video from an InputStream provided by the app
 	 *@return true if service is opened successfully and stream is started, return false otherwise
@@ -3823,74 +3802,76 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		navServiceStartResponseReceived = true;
 		navServiceStartResponse = true;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceStarted(SessionType.NAV, isEncrypted);
-
-		if (_videoStreamWriter != null)
-			_videoStreamWriter.handleSdlSession(sdlSession);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.NAV)){
+			sdlSession.getServiceListeners().get(SessionType.NAV).onServiceStarted(sdlSession, SessionType.NAV, isEncrypted);
+		}
 	}
 	
 	private void NavServiceStartedNACK() {
 		navServiceStartResponseReceived = true;
 		navServiceStartResponse = false;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceStartedNacked(SessionType.NAV);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.NAV)){
+			sdlSession.getServiceListeners().get(SessionType.NAV).onServiceError(sdlSession, SessionType.NAV, "Start NAV Service NACK'ed");
+		}
 	}
 	
     private void AudioServiceStarted(boolean isEncrypted) {
 		pcmServiceStartResponseReceived = true;
 		pcmServiceStartResponse = true;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceStarted(SessionType.PCM, isEncrypted);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.PCM)){
+			sdlSession.getServiceListeners().get(SessionType.PCM).onServiceStarted(sdlSession, SessionType.PCM, isEncrypted);
+		}
 	}
     
     private void RPCProtectedServiceStarted() {
     	rpcProtectedResponseReceived = true;
     	rpcProtectedStartResponse = true;
-
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceStarted(SessionType.RPC, true);
 	}
     private void AudioServiceStartedNACK() {
 		pcmServiceStartResponseReceived = true;
 		pcmServiceStartResponse = false;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceStartedNacked(SessionType.PCM);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.PCM)){
+			sdlSession.getServiceListeners().get(SessionType.PCM).onServiceError(sdlSession, SessionType.NAV, "Start Audio Service NACK'ed");
+		}
 	}
 
 	private void NavServiceEnded() {
 		navServiceEndResponseReceived = true;
 		navServiceEndResponse = true;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceEnded(SessionType.NAV);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.NAV)){
+			sdlSession.getServiceListeners().get(SessionType.NAV).onServiceEnded(sdlSession, SessionType.NAV);
+		}
 	}
 	
 	private void NavServiceEndedNACK() {
 		navServiceEndResponseReceived = true;
 		navServiceEndResponse = false;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceEndedNacked(SessionType.NAV);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.NAV)){
+			sdlSession.getServiceListeners().get(SessionType.NAV).onServiceError(sdlSession, SessionType.NAV, "End NAV Service NACK'ed");
+		}
 	}
 	
     private void AudioServiceEnded() {
 		pcmServiceEndResponseReceived = true;
 		pcmServiceEndResponse = true;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceEnded(SessionType.PCM);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.PCM)){
+			sdlSession.getServiceListeners().get(SessionType.PCM).onServiceEnded(sdlSession, SessionType.PCM);
+		}
 	}
 	
     private void AudioServiceEndedNACK() {
 		pcmServiceEndResponseReceived = true;
 		pcmServiceEndResponse = false;
 
-		if (_sdlServiceListener != null)
-			_sdlServiceListener.onSdlServiceEndedNacked(SessionType.PCM);
+		if(sdlSession.getServiceListeners().containsKey(SessionType.PCM)){
+			sdlSession.getServiceListeners().get(SessionType.PCM).onServiceError(sdlSession, SessionType.PCM, "End Audio Service NACK'ed");
+		}
 	}	
 	
 	public void setAppService(Service mService)
@@ -5652,5 +5633,69 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 	{
 		return sPoliciesURL;
 	}
-	
+
+	// Helper methods for streaming
+	private Map<SessionType, StreamWriterThread> serviceThreads = new HashMap<>();
+
+	// Developer-facing
+	public void startService(SessionType serviceType, boolean isEncrypted) {
+		if(serviceType != null && sdlSession != null){
+			sdlSession.startService(serviceType, sdlSession.getSessionId(), isEncrypted);
+			StreamWriterThread thread = new StreamWriterThread(this, serviceType);
+			serviceThreads.put(serviceType, thread);
+			thread.start();
+		}
+	}
+
+	public void endService(SessionType serviceType) {
+		if(serviceType != null && sdlSession != null){
+			sdlSession.endService(serviceType, sdlSession.getSessionId());
+			StreamWriterThread thread = serviceThreads.get(serviceType);
+			if(thread != null){
+				thread.halt();
+				try {
+					thread.interrupt();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				thread.clearByteBuffer();
+				serviceThreads.remove(serviceType);
+			}
+		}
+	}
+
+	public void setServiceListener(SessionType serviceType, ISdlServiceListener sdlServiceListener){
+		if(serviceType != null && sdlSession != null && sdlServiceListener != null){
+			sdlSession.setServiceListener(serviceType, sdlServiceListener);
+		}
+	}
+
+	public void writeToStream(SessionType serviceType, byte[] buf, Integer size){
+		StreamWriterThread thread = serviceThreads.get(serviceType);
+		if(thread == null){
+			return;
+		}
+
+		synchronized (thread.BUFFER_LOCK){
+			thread.isWaiting = true;
+			try {
+				thread.BUFFER_LOCK.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			thread.isWaiting = false;
+
+			thread.setByteBuffer(buf, size);
+		}
+	}
+
+	// For internal use
+	public byte getSessionId(){
+		return sdlSession.getSessionId();
+	}
+
+	public void sendStreamPacket(ProtocolMessage pm){
+		sdlSession.sendStreamPacket(pm);
+	}
+
 } // end-class
