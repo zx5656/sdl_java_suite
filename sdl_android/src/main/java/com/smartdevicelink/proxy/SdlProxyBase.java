@@ -5634,33 +5634,23 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		return sPoliciesURL;
 	}
 
-	// Helper methods for streaming
+	// For streaming
 	private Map<SessionType, StreamWriterThread> serviceThreads = new HashMap<>();
 
-	// Developer-facing
-	public void startService(SessionType serviceType, boolean isEncrypted) {
+	public StreamWriterThread startService(SessionType serviceType, boolean isEncrypted) {
 		if(serviceType != null && sdlSession != null){
 			sdlSession.startService(serviceType, sdlSession.getSessionId(), isEncrypted);
-			StreamWriterThread thread = new StreamWriterThread(this, serviceType);
+			StreamWriterThread thread = new StreamWriterThread(this.sdlSession, serviceType);
 			serviceThreads.put(serviceType, thread);
-			thread.start();
+			return thread;
 		}
+		return null;
 	}
 
 	public void endService(SessionType serviceType) {
 		if(serviceType != null && sdlSession != null){
 			sdlSession.endService(serviceType, sdlSession.getSessionId());
-			StreamWriterThread thread = serviceThreads.get(serviceType);
-			if(thread != null){
-				thread.halt();
-				try {
-					thread.interrupt();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				thread.clearByteBuffer();
-				serviceThreads.remove(serviceType);
-			}
+			serviceThreads.remove(serviceType);
 		}
 	}
 
@@ -5668,34 +5658,6 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		if(serviceType != null && sdlSession != null && sdlServiceListener != null){
 			sdlSession.setServiceListener(serviceType, sdlServiceListener);
 		}
-	}
-
-	public void writeToStream(SessionType serviceType, byte[] buf, Integer size){
-		StreamWriterThread thread = serviceThreads.get(serviceType);
-		if(thread == null){
-			return;
-		}
-
-		synchronized (thread.BUFFER_LOCK){
-			thread.isWaiting = true;
-			try {
-				thread.BUFFER_LOCK.wait();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			thread.isWaiting = false;
-
-			thread.setByteBuffer(buf, size);
-		}
-	}
-
-	// For internal use
-	public byte getSessionId(){
-		return sdlSession.getSessionId();
-	}
-
-	public void sendStreamPacket(ProtocolMessage pm){
-		sdlSession.sendStreamPacket(pm);
 	}
 
 } // end-class

@@ -1,15 +1,17 @@
 package com.smartdevicelink.streaming;
 
+import com.smartdevicelink.SdlConnection.SdlSession;
 import com.smartdevicelink.protocol.ProtocolMessage;
 import com.smartdevicelink.protocol.enums.SessionType;
-import com.smartdevicelink.proxy.SdlProxyBase;
+
+import static com.smartdevicelink.trace.enums.Mod.proxy;
 
 public class StreamWriterThread extends Thread {
     private Boolean isHalted = false;
     private byte[] buf = null;
     private Integer size = 0;
     private SessionType serviceType;
-    private SdlProxyBase proxy;
+    private SdlSession session;
     public Boolean isWaiting = false;
     private final static Object lock = new Object();
     public final static Object BUFFER_LOCK = new Object();
@@ -22,9 +24,9 @@ public class StreamWriterThread extends Thread {
     private final static int ENC_READ_SIZE = TLS_MAX_RECORD_SIZE - TLS_RECORD_HEADER_SIZE - TLS_RECORD_MES_AUTH_CDE_SIZE - TLS_MAX_RECORD_PADDING_SIZE;
 
 
-    public StreamWriterThread(SdlProxyBase proxy, SessionType serviceType) {
-        this.proxy = proxy;
-        this.isServiceProtected = proxy.isServiceTypeProtected(serviceType);
+    public StreamWriterThread(SdlSession sdlSession, SessionType serviceType) {
+        this.session = sdlSession;
+        this.isServiceProtected = session.isServiceProtected(serviceType);
         this.serviceType = serviceType;
 
         this.setName(serviceType.getName()+"StreamWriter");
@@ -59,7 +61,7 @@ public class StreamWriterThread extends Thread {
 
     private ProtocolMessage createStreamPacket(byte[] byteData) {
         ProtocolMessage pm = new ProtocolMessage();
-        pm.setSessionID(proxy.getSessionId());
+        pm.setSessionID(session.getSessionId());
         pm.setSessionType(serviceType);
         pm.setFunctionID(0);
         pm.setCorrID(0);
@@ -95,12 +97,12 @@ public class StreamWriterThread extends Thread {
                     for(int i = 0; i < ret.length; i++) {
                         byte[] byteData = ret[i];
                         ProtocolMessage pm = createStreamPacket(byteData);
-                        proxy.sendStreamPacket(pm);
+                        session.sendStreamPacket(pm);
                     }
                 }
                 else {
                     ProtocolMessage pm = createStreamPacket(buf);
-                    proxy.sendStreamPacket(pm);
+                    session.sendStreamPacket(pm);
                 }
 
                 clearByteBuffer();

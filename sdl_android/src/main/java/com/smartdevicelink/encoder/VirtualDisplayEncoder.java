@@ -22,10 +22,6 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.smartdevicelink.SdlConnection.SdlSession;
-import com.smartdevicelink.protocol.enums.SessionType;
-import com.smartdevicelink.proxy.SdlProxyBase;
-import com.smartdevicelink.proxy.interfaces.ISdlServiceListener;
 import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.ScreenParams;
 import com.smartdevicelink.proxy.rpc.TouchCoord;
@@ -53,7 +49,6 @@ public class VirtualDisplayEncoder {
     private Class<? extends SdlPresentation> presentationClass = null;
     private StreamWriterThread streamWriterThread = null;
     private Context mContext;
-    private SdlProxyBase proxy;
     private Boolean initPassed = false;
     private Handler uiHandler = new Handler(Looper.getMainLooper());
     private final static int REFRESH_RATE_MS = 100;
@@ -71,7 +66,7 @@ public class VirtualDisplayEncoder {
      * @param screenParams
      * @throws Exception
      */
-    public void init(Context context, SdlProxyBase proxyALM, Class<? extends SdlPresentation> presentationClass, ScreenParams screenParams) throws Exception {
+    public void init(Context context, StreamWriterThread streamWriterThread, Class<? extends SdlPresentation> presentationClass, ScreenParams screenParams) throws Exception {
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             Log.e(TAG, "API level of 21 required for VirtualDisplayEncoder");
             throw new Exception("API level of 21 required");
@@ -85,7 +80,7 @@ public class VirtualDisplayEncoder {
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
 
         mContext = context;
-        proxy = proxyALM;
+        this.streamWriterThread = streamWriterThread;
 
         //need to check image resolution for null
         if(screenParams.getImageResolution().getResolutionHeight() != null){
@@ -125,6 +120,8 @@ public class VirtualDisplayEncoder {
         synchronized (STREAMING_LOCK) {
 
             try {
+                streamWriterThread.start();
+
                 inputSurface = prepareVideoEncoder();
 
                 // Create a virtual display that will output to our encoder.
@@ -315,7 +312,17 @@ public class VirtualDisplayEncoder {
 
     private void onStreamDataAvailable(byte[] data, int size) {
         try {
-            proxy.writeToStream(SessionType.NAV, data, size);
+            synchronized (streamWriterThread.BUFFER_LOCK){
+                streamWriterThread.isWaiting = true;
+                try {
+                    streamWriterThread.BUFFER_LOCK.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                streamWriterThread.isWaiting = false;
+
+                streamWriterThread.setByteBuffer(data, size);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -458,29 +465,20 @@ public class VirtualDisplayEncoder {
     private void setupVideoStreamWriter() {
         if (streamWriterThread == null) {
             // Setup VideoStreamWriterThread thread
-            proxy.setServiceListener(SessionType.NAV, new ISdlServiceListener() {
-                @Override
-                public void onServiceStarted(SdlSession session, SessionType type, boolean isEncrypted) {
-                    Log.i(TAG, type.getName() + " service started.");
-                }
-
-                @Override
-                public void onServiceEnded(SdlSession session, SessionType type) {
-                    Log.i(TAG, type.getName() + " service ended.");
-                }
-
-                @Override
-                public void onServiceError(SdlSession session, SessionType type, String reason) {
-                    Log.i(TAG, type.getName() + " service error - " + reason);
-                }
-            });
-
-            proxy.startService(SessionType.NAV, false);
+            streamWriterThread.start();
         }
     }
 
     private void releaseVideoStreamWriter() {
-        proxy.endService(SessionType.NAV);
+        if(streamWriterThread != null){
+            streamWriterThread.halt();
+            try {
+                streamWriterThread.interrupt();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            streamWriterThread.clearByteBuffer();
+        }
     }
 
     public class StreamingParameters {
