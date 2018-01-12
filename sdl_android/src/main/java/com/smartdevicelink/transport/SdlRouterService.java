@@ -1,28 +1,6 @@
 package com.smartdevicelink.transport;
 
-import static com.smartdevicelink.transport.TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME;
-import static com.smartdevicelink.transport.TransportConstants.FORMED_PACKET_EXTRA_NAME;
-import static com.smartdevicelink.transport.TransportConstants.HARDWARE_DISCONNECTED;
-import static com.smartdevicelink.transport.TransportConstants.SEND_PACKET_TO_APP_LOCATION_EXTRA_NAME;
-
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.Vector;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.Manifest;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
@@ -55,6 +33,7 @@ import android.os.Messenger;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.RemoteException;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -79,11 +58,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
@@ -183,7 +164,10 @@ public class SdlRouterService extends Service{
 	private boolean isPingingClients = false;
 	int pingCount = 0;
 
-	
+	// swapping variables
+	private int selfValidationLevel;
+	private static final int VALIDATION_LEVEL_OFF = -1;
+
 	/* **************************************************************************************************************************************
 	****************************************************************************************************************************************
 	***********************************************  Broadcast Receivers START  **************************************************************
@@ -1091,9 +1075,73 @@ public class SdlRouterService extends Service{
 			}
 
 			this.stopForeground(true);
+			isForeground = false;
+
+			// check if swap timer elapsed
+			long timeStamp = RouterServiceValidator.getTrustedAppListTimeStamp(this);
+			if (System.currentTimeMillis() - timeStamp <= DateUtils.DAY_IN_MILLIS) {
+				inspectAllPossibleRouters();
+			}
 		}
 	}
-	
+
+	private void inspectAllPossibleRouters() {
+		List<ResolveInfo> infos = new ArrayList<>(AndroidTools.getSdlEnabledApps(this, "").values());
+		// counting this service as 1
+		if (infos.size() <= 1) {
+			return;
+		}
+
+		int selfValidationLevel = getLevelOfValidation(new ComponentName(this, this.getClass()), MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF);
+		// return as this service already validates at HIGH security setting level, no other service is better
+		if (selfValidationLevel == MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH) {
+			return;
+		}
+
+		Map<Integer, List<ResolveInfo>> validatedApps = new HashMap<>();
+		// assume that app developers place SdlReceiver.java and SdlRouterService.java in the same package
+		// see more at https://github.com/smartdevicelink/sdl_android/issues/648
+		// TODO: optimization, if at least one app validates at high, should we only validate at high level for the rest of the apps???
+		for (ResolveInfo info : infos) {
+			String pkgName = info.activityInfo.packageName;
+			String className = pkgName + ".SdlRouterService";
+			ComponentName cn = new ComponentName(pkgName, className);
+			int validationLevel = getLevelOfValidation(cn, selfValidationLevel);
+			if (validationLevel != VALIDATION_LEVEL_OFF) {
+				if (validatedApps.get(validationLevel) == null) {
+					validatedApps.put(validationLevel, new ArrayList<ResolveInfo>());
+				}
+				validatedApps.get(validationLevel).add(info);
+			}
+		}
+
+		// TODO: check map and swap if needed
+	}
+
+	private int getLevelOfValidation (ComponentName cn, int baseLineSecSetting) {
+		RouterServiceValidator rsv = new RouterServiceValidator(this, cn);
+		int securityLevel = MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH;
+		// for each level of security, perform a swapping validation, starting from HIGH
+		// only validate with security setting higher than base line
+		while (securityLevel > baseLineSecSetting) {
+			Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, app to validate: " + cn.getPackageName());
+			// TODO: set rsv in swap mode
+			// TODO: set rsv security setting for each iteration
+			// rsv.setSwappingSecurityLevel(securityLevel);
+			if (rsv.validate()) {
+				Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, validated with package name: " + cn.getPackageName() + ", security level: " + securityLevel);
+				return securityLevel;
+			}
+			securityLevel -= 0x10;
+		}
+
+		return VALIDATION_LEVEL_OFF;
+	}
+
+	private void swapRouter(List<ResolveInfo> routersList) {
+		// TODO: sort and swap
+	}
+
 	
 	/* **************************************************************************************************************************************
 	***********************************************  Helper Methods **************************************************************
