@@ -66,6 +66,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -166,7 +167,6 @@ public class SdlRouterService extends Service{
 
 	// swapping variables
 	private int selfValidationLevel;
-	private static final int VALIDATION_LEVEL_OFF = -1;
 
 	/* **************************************************************************************************************************************
 	****************************************************************************************************************************************
@@ -1086,9 +1086,8 @@ public class SdlRouterService extends Service{
 	}
 
 	private void inspectAllPossibleRouters() {
-		List<ResolveInfo> infos = new ArrayList<>(AndroidTools.getSdlEnabledApps(this, "").values());
-		// counting this service as 1
-		if (infos.size() <= 1) {
+		List<ResolveInfo> infos = new ArrayList<>(AndroidTools.getSdlEnabledApps(this, this.getPackageName()).values());
+		if (infos.size() < 1) {
 			return;
 		}
 
@@ -1098,33 +1097,38 @@ public class SdlRouterService extends Service{
 			return;
 		}
 
-		Map<Integer, List<ResolveInfo>> validatedApps = new HashMap<>();
+		int baseValidationLevel = selfValidationLevel;
+		TreeMap<Integer, List<ResolveInfo>> validatedApps = new TreeMap<>();
 		// assume that app developers place SdlReceiver.java and SdlRouterService.java in the same package
 		// see more at https://github.com/smartdevicelink/sdl_android/issues/648
-		// TODO: optimization, if at least one app validates at high, should we only validate at high level for the rest of the apps???
 		for (ResolveInfo info : infos) {
 			String pkgName = info.activityInfo.packageName;
 			String className = pkgName + ".SdlRouterService";
 			ComponentName cn = new ComponentName(pkgName, className);
-			int validationLevel = getLevelOfValidation(cn, selfValidationLevel);
-			if (validationLevel != VALIDATION_LEVEL_OFF) {
-				if (validatedApps.get(validationLevel) == null) {
-					validatedApps.put(validationLevel, new ArrayList<ResolveInfo>());
+			int validatedLevel = getLevelOfValidation(cn, baseValidationLevel);
+			if (validatedLevel > baseValidationLevel) {
+				if (validatedApps.get(validatedLevel) == null) {
+					validatedApps.put(validatedLevel, new ArrayList<ResolveInfo>());
 				}
-				validatedApps.get(validationLevel).add(info);
+				validatedApps.get(validatedLevel).add(info);
+				// update base level so we only attempt to validate the rest of the apps at the highest level necessary
+				if ((validatedLevel - baseValidationLevel) > 0x10) {
+					baseValidationLevel = validatedLevel - 0X10;
+				}
 			}
 		}
 
-		// TODO: check map and swap if needed
+		// at least one app validates at a higher level of security setting than self
+		if (validatedApps.size() > 0) {
+			swapRouter(validatedApps.lastEntry().getValue());
+		}
 	}
 
 	private int getLevelOfValidation (ComponentName cn, int baseLineSecSetting) {
 		RouterServiceValidator rsv = new RouterServiceValidator(this, cn);
 		int securityLevel = MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH;
-		// for each level of security, perform a swapping validation, starting from HIGH
-		// only validate with security setting higher than base line
 		while (securityLevel > baseLineSecSetting) {
-			Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, app to validate: " + cn.getPackageName());
+			Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, app to validate: " + cn.getPackageName() + ", security level: " + securityLevel);
 			// TODO: set rsv in swap mode
 			// TODO: set rsv security setting for each iteration
 			// rsv.setSwappingSecurityLevel(securityLevel);
@@ -1135,7 +1139,7 @@ public class SdlRouterService extends Service{
 			securityLevel -= 0x10;
 		}
 
-		return VALIDATION_LEVEL_OFF;
+		return MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF;
 	}
 
 	private void swapRouter(List<ResolveInfo> routersList) {
