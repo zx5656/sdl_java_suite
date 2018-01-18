@@ -204,24 +204,7 @@ public abstract class SdlBroadcastReceiver extends BroadcastReceiver{
 						final PackageManager packageManager = context.getPackageManager();
 						Vector<ResolveInfo> apps = new Vector(AndroidTools.getSdlEnabledApps(context, "").values()); //we want our package
 						if (apps != null && !apps.isEmpty()) {
-							Collections.sort(apps, new Comparator<ResolveInfo>() {
-								@Override
-								public int compare(ResolveInfo resolveInfo, ResolveInfo t1) {
-									try {
-										PackageInfo thisPack = packageManager.getPackageInfo(resolveInfo.activityInfo.packageName, 0);
-										PackageInfo itPack = packageManager.getPackageInfo(t1.activityInfo.packageName, 0);
-										if (thisPack.lastUpdateTime < itPack.lastUpdateTime) {
-											return -1;
-										} else if (thisPack.lastUpdateTime > itPack.lastUpdateTime) {
-											return 1;
-										}
-
-									} catch (PackageManager.NameNotFoundException e) {
-										e.printStackTrace();
-									}
-									return 0;
-								}
-							});
+							apps = (Vector<ResolveInfo>)AndroidTools.sortAppsByUpdateTime(packageManager, apps);
 							String packageName = apps.get(0).activityInfo.packageName;
 							serviceIntent = new Intent();
 							serviceIntent.setComponent(new ComponentName(packageName, packageName +".SdlRouterService"));

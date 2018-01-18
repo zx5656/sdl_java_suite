@@ -1085,6 +1085,11 @@ public class SdlRouterService extends Service{
 		}
 	}
 
+	/**
+	 * For each app (services) installed in the device, find the services that validate at the highest level that is greater than the current
+	 * level that this service is already validated at.
+	 * If there is at least one such service, attempt to swap with this service.
+	 */
 	private void inspectAllPossibleRouters() {
 		List<ResolveInfo> infos = new ArrayList<>(AndroidTools.getSdlEnabledApps(this, this.getPackageName()).values());
 		if (infos.size() < 1) {
@@ -1124,6 +1129,14 @@ public class SdlRouterService extends Service{
 		}
 	}
 
+	/**
+	 * Given a ComponentName (a service) and a base line security setting, validate the service using all security
+	 * settings that are greater than the base line.
+	 * @see RouterServiceValidator#validate()
+	 * @param cn ComponentName, the service to be validated
+	 * @param baseLineSecSetting the minimum security setting limit
+	 * @return the level of security setting (greate than the base line) this service is validated at or the default security off level
+	 */
 	private int getLevelOfValidation (ComponentName cn, int baseLineSecSetting) {
 		RouterServiceValidator rsv = new RouterServiceValidator(this, cn);
 		int securityLevel = MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH;
@@ -1142,8 +1155,27 @@ public class SdlRouterService extends Service{
 		return MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF;
 	}
 
+
+	/**
+	 * Start a service using the most recently updated app from the list of ResolveInfo objects and kill self when done
+	 * @param routersList list of possible router services to be started
+	 */
 	private void swapRouter(List<ResolveInfo> routersList) {
-		// TODO: sort and swap
+		routersList = AndroidTools.sortAppsByUpdateTime(this.getPackageManager(), routersList);
+		if (!routersList.isEmpty()) {
+			Intent i = new Intent();
+			String pkgName = routersList.get(0).activityInfo.packageName;
+			i.setComponent(new ComponentName(pkgName, pkgName + ".SdlRouterService"));
+			closing = true;
+			closeBluetoothSerialServer();
+			this.startService(i);
+			notifyAltTransportOfClose(TransportConstants.ROUTER_SHUTTING_DOWN_REASON_NEWER_SERVICE);
+			if(getBaseContext()!=null){
+				stopSelf();
+			}else{
+				onDestroy();
+			}
+		}
 	}
 
 	
