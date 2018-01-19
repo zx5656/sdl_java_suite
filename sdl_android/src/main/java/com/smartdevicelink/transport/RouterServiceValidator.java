@@ -87,6 +87,10 @@ public class RouterServiceValidator {
 	private ComponentName service;//This is how we can save different routers over another in a waterfall method if we choose to.
 
 	private static int securityLevel = -1;
+
+	// router swapping validation variables
+	private int mSwappingSecurityLevel;
+	private boolean mIsSwappingMode;
 	
 	public RouterServiceValidator(Context context){
 		this.context = context;
@@ -98,25 +102,43 @@ public class RouterServiceValidator {
 		inDebugMode = inDebugMode();
 		this.service = service;
 	}
+
+	/**
+	 * Sets the security level for swapping validation purpose
+	 * @param level the security level to be set
+	 */
+	public void setSwappingSecurityLevel(int level) {
+		mSwappingSecurityLevel = level;
+	}
+
+	/**
+	 * Sets this class in swapping validation mode
+	 * @param isSwapMode true if in swapping validation mode; false otherwise.
+	 */
+	public void setSwappingMode(boolean isSwapMode) {
+		mIsSwappingMode = isSwapMode;
+	}
+
 	/**
 	 * Main function to call to ensure we are connecting to a validated router service
 	 * @return whether or not the currently running router service can be trusted.
 	 */
 	public boolean validate(){
-		
-		if(securityLevel == -1){
-			securityLevel = getSecurityLevel(context);
-		}
-		
-		if(securityLevel == MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF){ //If security isn't an issue, just return true;
-			return true;
+		if (!mIsSwappingMode) {
+			if (securityLevel == -1) {
+				securityLevel = getSecurityLevel(context);
+			}
+
+			if (securityLevel == MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF) { //If security isn't an issue, just return true;
+				return true;
+			}
 		}
 		
 		PackageManager pm = context.getPackageManager();
 		//Grab the package for the currently running router service. We need this call regardless of if we are in debug mode or not.
 		String packageName = null;
 		
-		if(this.service != null){
+		if(!mIsSwappingMode && this.service != null){
 			Log.d(TAG, "Supplied service name of " + this.service.getClassName());
 			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !isServiceRunning(context,this.service)){
 				//This means our service isn't actually running, so set to null. Hopefully we can find a real router service after this.
@@ -129,7 +151,7 @@ public class RouterServiceValidator {
 				}
 			}
 		}
-		if(this.service == null){
+		if(!mIsSwappingMode && this.service == null){
 			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O ) {
 				this.service = componentNameForServiceRunning(pm); //Change this to an array if multiple services are started?
 				if (this.service == null) { //if this is still null we know there is no service running so we can return false
@@ -155,7 +177,9 @@ public class RouterServiceValidator {
 			}
 		}//No running service found. Might need to attempt to start one
 		//TODO spin up a known good router service
-		wakeUpRouterServices();
+		if (!mIsSwappingMode) {
+			wakeUpRouterServices();
+		}
 		return false;
 	}
 
@@ -182,7 +206,8 @@ public class RouterServiceValidator {
 	}
 	
 	private boolean shouldOverrideInstalledFrom(){
-		return securityLevel< MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH 
+		int currentSecLevel = (mIsSwappingMode ? mSwappingSecurityLevel : securityLevel);
+		return currentSecLevel< MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH
 				|| (this.inDebugMode && ((this.flags & FLAG_DEBUG_INSTALLED_FROM_CHECK) != FLAG_DEBUG_INSTALLED_FROM_CHECK));
 	}
 	

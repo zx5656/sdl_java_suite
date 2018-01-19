@@ -165,8 +165,6 @@ public class SdlRouterService extends Service{
 	private boolean isPingingClients = false;
 	int pingCount = 0;
 
-	// swapping variables
-	private int selfValidationLevel;
 
 	/* **************************************************************************************************************************************
 	****************************************************************************************************************************************
@@ -1086,7 +1084,7 @@ public class SdlRouterService extends Service{
 	}
 
 	/**
-	 * For each app (services) installed in the device, find the services that validate at the highest level that is greater than the current
+	 * For each app (service) installed in the device, find the services that validate at the highest level that is greater than the current
 	 * level that this service is already validated at.
 	 * If there is at least one such service, attempt to swap with this service.
 	 */
@@ -1096,13 +1094,12 @@ public class SdlRouterService extends Service{
 			return;
 		}
 
-		int selfValidationLevel = getLevelOfValidation(new ComponentName(this, this.getClass()), MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF);
+		int baseValidationLevel = getLevelOfValidation(new ComponentName(this, this.getClass()), MultiplexTransportConfig.FLAG_MULTI_SECURITY_OFF);
 		// return as this service already validates at HIGH security setting level, no other service is better
 		if (selfValidationLevel == MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH) {
 			return;
 		}
 
-		int baseValidationLevel = selfValidationLevel;
 		TreeMap<Integer, List<ResolveInfo>> validatedApps = new TreeMap<>();
 		// assume that app developers place SdlReceiver.java and SdlRouterService.java in the same package
 		// see more at https://github.com/smartdevicelink/sdl_android/issues/648
@@ -1135,16 +1132,15 @@ public class SdlRouterService extends Service{
 	 * @see RouterServiceValidator#validate()
 	 * @param cn ComponentName, the service to be validated
 	 * @param baseLineSecSetting the minimum security setting limit
-	 * @return the level of security setting (greate than the base line) this service is validated at or the default security off level
+	 * @return the highest level of security setting the given service is validated at or the default security off level
 	 */
 	private int getLevelOfValidation (ComponentName cn, int baseLineSecSetting) {
 		RouterServiceValidator rsv = new RouterServiceValidator(this, cn);
+		rsv.setSwappingMode(true);
 		int securityLevel = MultiplexTransportConfig.FLAG_MULTI_SECURITY_HIGH;
 		while (securityLevel > baseLineSecSetting) {
 			Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, app to validate: " + cn.getPackageName() + ", security level: " + securityLevel);
-			// TODO: set rsv in swap mode
-			// TODO: set rsv security setting for each iteration
-			// rsv.setSwappingSecurityLevel(securityLevel);
+			rsv.setSwappingSecurityLevel(securityLevel);
 			if (rsv.validate()) {
 				Log.v(TAG, "SdlRouterService swap, getLevelOfValidation, validated with package name: " + cn.getPackageName() + ", security level: " + securityLevel);
 				return securityLevel;
@@ -1157,7 +1153,7 @@ public class SdlRouterService extends Service{
 
 
 	/**
-	 * Start a service using the most recently updated app from the list of ResolveInfo objects and kill self when done
+	 * Starts a service using the most recently updated app from the list of ResolveInfo objects and kill self when done
 	 * @param routersList list of possible router services to be started
 	 */
 	private void swapRouter(List<ResolveInfo> routersList) {
@@ -1170,9 +1166,9 @@ public class SdlRouterService extends Service{
 			closeBluetoothSerialServer();
 			this.startService(i);
 			notifyAltTransportOfClose(TransportConstants.ROUTER_SHUTTING_DOWN_REASON_NEWER_SERVICE);
-			if(getBaseContext()!=null){
+			if (getBaseContext()!=null) {
 				stopSelf();
-			}else{
+			} else {
 				onDestroy();
 			}
 		}
