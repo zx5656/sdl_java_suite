@@ -51,11 +51,12 @@ import static com.smartdevicelink.transport.TransportConstants.FOREGROUND_EXTRA;
  * 3. set minimum SDK version to 12:
  * <uses-sdk android:minSdkVersion="12"/>
  */
-public class USBAccessoryAttachmentActivity extends Activity {
+public class USBAccessoryAttachmentActivity extends Activity implements UsbTransferProvider.UsbTransferCallback {
     private static final String TAG =
             USBAccessoryAttachmentActivity.class.getSimpleName();
 	final String LOCAL_ROUTER_SERVICE_EXTRA					= "router_service";
 	final String LOCAL_ROUTER_SERVICE_DID_START_OWN			= "did_start";
+	UsbTransferProvider usbTransferProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,15 +77,13 @@ public class USBAccessoryAttachmentActivity extends Activity {
 
         if (UsbManager.ACTION_USB_ACCESSORY_ATTACHED.equals(action)) {
 	        UsbAccessory usbAccessory = intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
-			wakeUpRouterService(this, false, true, usbAccessory);
-
+			wakeUpRouterService(this, false, true, usbAccessory, this);
             //AndroidTools.sendExplicitBroadcast(getApplicationContext(),usbAccessoryAttachedIntent,null);
         }
-
-        finish();
     }
 
-	private boolean wakeUpRouterService(final Context context, final boolean ping, final boolean altTransportWake, final UsbAccessory usbAccessory){
+
+	private boolean wakeUpRouterService(final Context context, final boolean ping, final boolean altTransportWake, final UsbAccessory usbAccessory, final UsbTransferProvider.UsbTransferCallback cb){
 		new ServiceFinder(context, context.getPackageName(), new ServiceFinder.ServiceFinderCallback() {
 			@Override
 			public void onComplete(Vector<ComponentName> routerServices) {
@@ -122,7 +121,7 @@ public class USBAccessoryAttachmentActivity extends Activity {
 						context.sendBroadcast(restart);
 
 						if(altTransportWake && usbAccessory != null){
-							new UsbTransferProvider(context,serviceIntent.getComponent(),usbAccessory);
+							usbTransferProvider = new UsbTransferProvider(context,serviceIntent.getComponent(),usbAccessory, cb);
 						}
 					} catch (SecurityException e) {
 						Log.e(TAG, "Security exception, process is bad");
@@ -130,7 +129,7 @@ public class USBAccessoryAttachmentActivity extends Activity {
 				} else {
 					if (altTransportWake && usbAccessory != null) {
 						//wakeRouterServiceAltTransport(context);
-						new UsbTransferProvider(context,runningBluetoothServicePackage.get(0),usbAccessory);
+						usbTransferProvider = new UsbTransferProvider(context,runningBluetoothServicePackage.get(0),usbAccessory, cb);
 						return;
 					}
 					return;
@@ -138,5 +137,11 @@ public class USBAccessoryAttachmentActivity extends Activity {
 			}
 		});
 		return true;
+	}
+
+	@Override
+	public void onUsbTransferUpdate(boolean success) {
+		Log.i(TAG, success ? "Successfully transfered file descriptor" : "Failed to send file descriptor");
+    	finish();
 	}
 }

@@ -652,9 +652,10 @@ public class SdlRouterService extends Service{
 	        	case UsbTransferProvider.SENDING_PFD_ID:
 			        ParcelFileDescriptor pfd = (ParcelFileDescriptor) msg.obj;
 			        boolean success = false;
-			        if(this.provider.get().getParcelFileDescriptor() == null){
+			        Log.d(TAG, "Received PFD message");
+			        if(service.getParcelFileDescriptor() == null && service.mAOAService == null){
 				        Log.d(TAG, "Setting the PFD & opening accessory");
-				        this.provider.get().initAOAService(pfd);
+				        service.initAOAService(pfd);
 				        success = true;
 			        }else{
 			        	Log.d(TAG, "We already set the PFD");
@@ -1243,18 +1244,20 @@ public class SdlRouterService extends Service{
 
 			@Override
 			public void onTransportConnected() {
-				toasty("USB TRANSPORT CONNECTED Sir");
+				toasty("USB Transport Connected");
 				SdlRouterService.this.onTransportConnected(TransportType.USB);
 			}
 
 			@Override
 			public void onTransportDisconnected(String info) {
+				toasty("USB Transport Disconnected");
 				SdlRouterService.this.onTransportDisconnected(TransportType.USB);
 			}
 
 			@Override
 			public void onTransportError(String info, Exception e) {
-				Log.d("USBTransport", info);
+				toasty("USB Transport Disconnected due to error");
+				SdlRouterService.this.onTransportDisconnected(TransportType.USB);
 			}
 		});
 		try {
@@ -1316,9 +1319,6 @@ public class SdlRouterService extends Service{
 	}
 	
 	public void onTransportDisconnected(TransportType type){
-		if(altTransportService!=null){  //If we still have an alt transport open, then we don't need to tell the clients to close
-			return;
-		}
 		if(type == TransportType.USB){
 			mAOAService.disconnect();
 			mAOAService = null;

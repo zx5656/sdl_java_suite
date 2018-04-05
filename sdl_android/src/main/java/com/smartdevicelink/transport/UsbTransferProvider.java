@@ -36,6 +36,7 @@ public class UsbTransferProvider {
     final Messenger clientMessenger;
 
     ParcelFileDescriptor usbPfd;
+	final UsbTransferCallback callback;
 
     private ServiceConnection routerConnection= new ServiceConnection() {
 
@@ -64,7 +65,7 @@ public class UsbTransferProvider {
         }
     };
 
-    public UsbTransferProvider(Context context, ComponentName service, UsbAccessory usbAccessory){
+    public UsbTransferProvider(Context context, ComponentName service, UsbAccessory usbAccessory, UsbTransferCallback callback){
         if(context == null || service == null || usbAccessory == null){
             throw new IllegalStateException("Supplied params are not correct. Context == null? "+ (context==null) + " ComponentName == null? " + (service == null) + " Usb Accessory == null? " + usbAccessory);
         }
@@ -72,8 +73,9 @@ public class UsbTransferProvider {
         this.routerService = service;
         this.clientMessenger = new Messenger(new ClientHandler(this));
         usbPfd = getFileDescriptor(usbAccessory);
-        if(usbPfd != null){
-            checkIsConnected();
+        this.callback = callback;
+        if(usbPfd != null) {
+	        checkIsConnected();
         }
     }
 
@@ -93,7 +95,7 @@ public class UsbTransferProvider {
     public void checkIsConnected(){
         if(!AndroidTools.isServiceExported(context,routerService) || !bindToService()){
             //We are unable to bind to service
-            Log.e(TAG, "Unable to bind to servicec");
+            Log.e(TAG, "Unable to bind to service");
             unBindFromService();
         }
     }
@@ -137,6 +139,12 @@ public class UsbTransferProvider {
         routerServiceMessenger =null;
     }
 
+	private void handleUsbTransferResponse(boolean success){
+		if(callback != null){
+			callback.onUsbTransferUpdate(success);
+		}
+	}
+
     static class ClientHandler extends Handler {
         final WeakReference<UsbTransferProvider> provider;
 
@@ -150,16 +158,23 @@ public class UsbTransferProvider {
             if(provider.get()==null){
                 return;
             }
+
             switch (msg.what) {
                 case 5556: //TransportConstants.USB_ACC_RECEIVED:
                     Log.d(TAG, "Successful USB transfer");
+                    provider.get().handleUsbTransferResponse(true);
                     provider.get().finish();
                     break;
                 default:
+	                provider.get().handleUsbTransferResponse(false);
                     break;
             }
         }
     };
+
+	public interface UsbTransferCallback{
+		public void onUsbTransferUpdate(boolean success);
+	}
 
 
 }
