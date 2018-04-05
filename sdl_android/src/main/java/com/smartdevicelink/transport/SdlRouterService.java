@@ -45,6 +45,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.DeadObjectException;
@@ -54,13 +56,16 @@ import android.os.IBinder.DeathRecipient;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.Parcel;
+import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.widget.Toast;
 
 import com.smartdevicelink.R;
+import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.marshal.JsonRPCMarshaller;
 import com.smartdevicelink.protocol.BinaryFrameHeader;
 import com.smartdevicelink.protocol.ProtocolMessage;
@@ -81,6 +86,7 @@ import com.smartdevicelink.util.SdlAppInfo;
 import static com.smartdevicelink.transport.TransportConstants.FOREGROUND_EXTRA;
 import static com.smartdevicelink.transport.TransportConstants.SDL_NOTIFICATION_CHANNEL_ID;
 import static com.smartdevicelink.transport.TransportConstants.SDL_NOTIFICATION_CHANNEL_NAME;
+import static com.smartdevicelink.transport.TransportConstants.START_ROUTER_SERVICE_ACTION;
 
 /**
  * <b>This class should not be modified by anyone outside of the approved contributors of the SmartDeviceLink project.</b>
@@ -124,6 +130,7 @@ public class SdlRouterService extends Service{
 	private final int UNREGISTER_APP_INTERFACE_CORRELATION_ID = 65530;
     
 	private MultiplexBluetoothTransport mSerialService = null;
+	private MyUSBTransport mAOAService = null;
 
 	private static boolean connectAsClient = false;
 	private static boolean closing = false;
@@ -151,6 +158,7 @@ public class SdlRouterService extends Service{
 	private ExecutorService packetExecutor = null;
 	PacketWriteTaskMaster packetWriteTaskMaster = null;
 
+	private ParcelFileDescriptor parcelFileDescriptor = null;
 
 	/**
 	 * This flag is to keep track of if we are currently acting as a foreground service
@@ -641,6 +649,27 @@ public class SdlRouterService extends Service{
 	        			AndroidTools.sendExplicitBroadcast(service.getApplicationContext(),service.pingIntent, null);
 	        		}
 	        		break;
+	        	case UsbTransferProvider.SENDING_PFD_ID:
+			        ParcelFileDescriptor pfd = (ParcelFileDescriptor) msg.obj;
+			        boolean success = false;
+			        if(this.provider.get().getParcelFileDescriptor() == null){
+				        Log.d(TAG, "Setting the PFD & opening accessory");
+				        this.provider.get().initAOAService(pfd);
+				        success = true;
+			        }else{
+			        	Log.d(TAG, "We already set the PFD");
+			        }
+			        if(msg.replyTo!=null){
+				        Message message = Message.obtain();
+				        message.what = UsbTransferProvider.RCVING_PFD_ID;
+				        message.arg1 = success ? 1 : 0;
+				        try {
+					        msg.replyTo.send(message);
+				        } catch (RemoteException e) {
+					        e.printStackTrace();
+				        }
+			        }
+	        		break;
 	        	default:
 	        		Log.w(TAG, "Unsupported request: " + msg.what);
 	        		break;
@@ -665,6 +694,8 @@ public class SdlRouterService extends Service{
 				if(0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)){ //Only allow alt transport in debug mode
 					return this.altTransportMessenger.getBinder();
 				}
+			}else if(UsbTransferProvider.BIND_REQUEST_TYPE_USB_PFD.equals(requestType)){
+				return this.routerStatusMessenger.getBinder();
 			}else if(TransportConstants.BIND_REQUEST_TYPE_CLIENT.equals(requestType)){
 				return this.routerMessenger.getBinder();
 			}else if(TransportConstants.BIND_REQUEST_TYPE_STATUS.equals(requestType)){
@@ -881,6 +912,7 @@ public class SdlRouterService extends Service{
 	@SuppressLint({"NewApi", "MissingPermission"})
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		toasty("Router service got a start command.");
 		if(!initPassed) {
 			return super.onStartCommand(intent, flags, startId);
 		}
@@ -1146,8 +1178,10 @@ public class SdlRouterService extends Service{
 	 */
 	public boolean shouldServiceRemainOpen(Intent intent){
 		//Log.d(TAG, "Determining if this service should remain open");
-		
-		if(altTransportService!=null || altTransportTimerHandler !=null){
+
+		if(mAOAService != null || parcelFileDescriptor != null){
+			return true; // Stay on for USB
+		}else if(altTransportService!=null || altTransportTimerHandler !=null){
 			//We have been started by an alt transport, we must remain open. "My life for Auir...."
 			Log.d(TAG, "Alt Transport connected, remaining open");
 			return true;
@@ -1196,6 +1230,42 @@ public class SdlRouterService extends Service{
             	mSerialService.start();
             }
 
+		}
+	}
+
+	private synchronized void initAOAService(ParcelFileDescriptor parcelFileDescriptor){
+		Log.i(TAG, "Opening AOA");
+		mAOAService = new MyUSBTransport(new USBTransportConfig(this, parcelFileDescriptor), new ITransportListener() {
+			@Override
+			public void onTransportPacketReceived(SdlPacket packet) {
+				sendPacketToRegisteredApp(packet);
+			}
+
+			@Override
+			public void onTransportConnected() {
+				toasty("USB TRANSPORT CONNECTED Sir");
+				SdlRouterService.this.onTransportConnected(TransportType.USB);
+			}
+
+			@Override
+			public void onTransportDisconnected(String info) {
+				SdlRouterService.this.onTransportDisconnected(TransportType.USB);
+			}
+
+			@Override
+			public void onTransportError(String info, Exception e) {
+				Log.d("USBTransport", info);
+			}
+		});
+		try {
+			if(!mAOAService.getIsConnected()) {
+				Log.d(TAG, "Attempting to open USB connection");
+				mAOAService.openConnection();
+			}else{
+				Log.d(TAG, "USB connection is already open");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -1248,6 +1318,11 @@ public class SdlRouterService extends Service{
 	public void onTransportDisconnected(TransportType type){
 		if(altTransportService!=null){  //If we still have an alt transport open, then we don't need to tell the clients to close
 			return;
+		}
+		if(type == TransportType.USB){
+			mAOAService.disconnect();
+			mAOAService = null;
+			parcelFileDescriptor = null;
 		}
 		Log.e(TAG, "Notifying client service of hardware disconnect.");
 		connectedTransportType = null;
@@ -1357,7 +1432,8 @@ public class SdlRouterService extends Service{
 	            }
 	        }
 	    }
-		
+
+	    // Where you'd check if USB and write to AOA
 		@SuppressWarnings("unused") //The return false after the packet null check is not dead code. Read the getByteArray method from bundle
 		public boolean writeBytesToTransport(Bundle bundle){
 			if(bundle == null){
@@ -1372,25 +1448,33 @@ public class SdlRouterService extends Service{
 					return true;
 				}
 				return false;
+			}else if(mAOAService != null){
+				byte[] packet = bundle.getByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME);
+				Log.d(TAG, "Sending packet over AOA.");
+				if(packet!=null){
+					return mAOAService.sendBytesOverTransport(packet);
+				}
 			}else if(sendThroughAltTransport(bundle)){
 				return true;
 			}
-			else{
-				Log.e(TAG, "Can't send data, no transport connected");
-				return false;
-			}	
+			Log.e(TAG, "Can't send data, no transport connected");
+			return false;
 		}
-		
-		private boolean manuallyWriteBytes(byte[] bytes, int offset, int count){
-			if(mSerialService !=null && mSerialService.getState()==MultiplexBluetoothTransport.STATE_CONNECTED){
-				if(bytes!=null){
-					mSerialService.write(bytes,offset,count);
+
+		// Might have to check if USB and write to AOA
+		private boolean manuallyWriteBytes(byte[] bytes, int offset, int count) {
+			if (mSerialService != null && mSerialService.getState() == MultiplexBluetoothTransport.STATE_CONNECTED) {
+				if (bytes != null) {
+					mSerialService.write(bytes, offset, count);
 					return true;
 				}
 				return false;
-			}else {
-				return sendThroughAltTransport(bytes,offset,count);
+			} else if (mAOAService != null) {
+				if(bytes!=null){
+					return mAOAService.sendBytesOverTransport(bytes);
+				}
 			}
+			return sendThroughAltTransport(bytes,offset,count);
 		}
 		
 		
@@ -2665,5 +2749,18 @@ public class SdlRouterService extends Service{
 		 }
 	}
 
+	// For debugging
+	public void toasty(String s){
+		// posty your toasty
+		Log.d(TAG, s);
+	}
+
+	public void setParcelFileDescriptor(ParcelFileDescriptor pfd){
+		parcelFileDescriptor = pfd;
+	}
+
+	public ParcelFileDescriptor getParcelFileDescriptor(){
+		return parcelFileDescriptor;
+	}
 
 }

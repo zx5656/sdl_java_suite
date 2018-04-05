@@ -11,6 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.util.Log;
 
@@ -50,6 +52,7 @@ public abstract class SdlBroadcastReceiver extends BroadcastReceiver{
 
     private static final Object QUEUED_SERVICE_LOCK = new Object();
     private static ComponentName queuedService = null;
+    public UsbAccessory usbAccessory;
 	
 	public int getRouterServiceVersion(){
 		return SdlRouterService.ROUTER_SERVICE_VERSION_NUMBER;	
@@ -76,13 +79,17 @@ public abstract class SdlBroadcastReceiver extends BroadcastReceiver{
         	//Log.i(TAG, "Unwanted intent from child class");
         	return;
         }
-        
-        if(action.equalsIgnoreCase(USBTransport.ACTION_USB_ACCESSORY_ATTACHED)){
-        	Log.d(TAG, "Usb connected");
-        	intent.setAction(null);
-			onSdlEnabled(context, intent);
+
+		if(action.equalsIgnoreCase(USBTransport.ACTION_USB_ACCESSORY_ATTACHED)){
+			Log.d(TAG, "Usb connected");
+			if(intent.hasExtra(UsbManager.EXTRA_ACCESSORY)){
+				usbAccessory = intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+				//wakeUpRouterService(context,false,true);
+			}
+			//intent.setAction(null);
+			//onSdlEnabled(context, intent);
 			return;
-        }
+		}
         
 		boolean didStart = false;
 		if (localRouterClass == null){
@@ -203,12 +210,16 @@ public abstract class SdlBroadcastReceiver extends BroadcastReceiver{
 							restart.putExtra(LOCAL_ROUTER_SERVICE_DID_START_OWN, true);
 							context.sendBroadcast(restart);
 
+							if(altTransportWake && usbAccessory != null){
+								//new UsbTransferProvider(context,serviceIntent.getComponent(),usbAccessory);
+							}
 						} catch (SecurityException e) {
 							Log.e(TAG, "Security exception, process is bad");
 						}
 					} else {
-						if (altTransportWake) {
-							wakeRouterServiceAltTransport(context);
+						if (altTransportWake && usbAccessory != null) {
+							//wakeRouterServiceAltTransport(context);
+							//new UsbTransferProvider(context,runningBluetoothServicePackage.get(0),usbAccessory);
 							return;
 						}
 						return;
