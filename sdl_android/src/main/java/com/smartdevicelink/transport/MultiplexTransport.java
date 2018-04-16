@@ -27,7 +27,8 @@ public class MultiplexTransport extends SdlTransport{
 			throw new IllegalArgumentException("Null transportConfig in MultiplexTransport constructor");
 		}
 		this.transportConfig = transportConfig;
-		brokerThread = new TransportBrokerThread(transportConfig.context, transportConfig.appId, transportConfig.service);
+		brokerThread = new TransportBrokerThread(transportConfig.context, transportConfig.appId, transportConfig.service,
+				transportConfig.primaryTransport, transportConfig.secondaryTransport);
 		brokerThread.start();
 		isDisconnecting = false;
 		//brokerThread.initTransportBroker();
@@ -64,7 +65,7 @@ public class MultiplexTransport extends SdlTransport{
 	 * Overridden abstract method which returns specific type of this transport.
 	 * 
 	 * @return Constant value - TransportType.BLUETOOTH.
-	 * @see TransportType
+	 * @see com.smartdevicelink.transport.enums.TransportType
 	 */
 	public TransportType getTransportType() {
 		return TransportType.MULTIPLEX;
@@ -139,18 +140,22 @@ public class MultiplexTransport extends SdlTransport{
 		final Context context;
 		final String appId;
 		final ComponentName service;
+		final TransportType primaryTransport;
+		final TransportType secondaryTransport;
 		Looper threadLooper = null;
 		/**
 		 * Thread will automatically start to prepare its looper.
 		 * @param context
 		 * @param appId
 		 */
-		public TransportBrokerThread(Context context, String appId, ComponentName service){
+		public TransportBrokerThread(Context context, String appId, ComponentName service, TransportType primaryTransport, TransportType secondaryTransport){
 			//this.start();
 			super();
 			this.context = context;
 			this.appId = appId;
 			this.service = service;
+			this.primaryTransport = primaryTransport;
+			this.secondaryTransport = secondaryTransport;
 			//initTransportBroker(context, appId);
 		}
 
@@ -234,7 +239,7 @@ public class MultiplexTransport extends SdlTransport{
 		
 		public void initTransportBroker(){
 
-			broker = new TransportBroker(context, appId, service){
+			broker = new TransportBroker(context, appId, service, primaryTransport, secondaryTransport){
 				
 				@Override
 				public boolean onHardwareConnected(TransportType type) {

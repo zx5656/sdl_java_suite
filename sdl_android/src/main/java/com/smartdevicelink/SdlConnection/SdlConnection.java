@@ -215,6 +215,7 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 	@Override
 	public void onTransportConnected() {
 		synchronized(PROTOCOL_REFERENCE_LOCK){
+			//TODO: communicate to proxy
 			if(_protocol != null){
 				boolean shouldRequestSession = _transport !=null  && _transport.getTransportType()== TransportType.MULTIPLEX;
 					for (SdlSession s : listenerList) {

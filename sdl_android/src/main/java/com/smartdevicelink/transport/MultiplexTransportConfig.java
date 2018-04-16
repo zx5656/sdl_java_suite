@@ -1,9 +1,9 @@
 package com.smartdevicelink.transport;
 
-import com.smartdevicelink.transport.enums.TransportType;
-
 import android.content.ComponentName;
 import android.content.Context;
+
+import com.smartdevicelink.transport.enums.TransportType;
 
 public class MultiplexTransportConfig extends BaseTransportConfig{
 
@@ -34,8 +34,8 @@ public class MultiplexTransportConfig extends BaseTransportConfig{
 	String appId;
 	ComponentName service;
 	int securityLevel;
-
-	
+	TransportType primaryTransport;
+	TransportType secondaryTransport;
 
 	
 	public MultiplexTransportConfig(Context context, String appId) {
@@ -48,14 +48,22 @@ public class MultiplexTransportConfig extends BaseTransportConfig{
 		this.context = context;
 		this.appId = appId;
 		this.securityLevel = securityLevel;
-	}	
+	}
+
+	public MultiplexTransportConfig(Context context, String appId, int securityLevel, TransportType primaryTransport, TransportType secondaryTransport) {
+		this.context = context;
+		this.appId = appId;
+		this.securityLevel = securityLevel;
+		this.primaryTransport = primaryTransport;
+		this.secondaryTransport = secondaryTransport;
+	}
 
 	/**
 	 * Overridden abstract method which returns specific type of this transport configuration.
 	 * 
 	 * @return Constant value TransportType.MULTIPLEX. 
 	 * 
-	 * @see TransportType
+	 * @see com.smartdevicelink.transport.enums.TransportType
 	 */
 	public TransportType getTransportType() {
 		return TransportType.MULTIPLEX;
@@ -82,6 +90,12 @@ public class MultiplexTransportConfig extends BaseTransportConfig{
 	public int getSecurityLevel(){
 		return securityLevel;
 	}
-	
 
+	public TransportType getPrimaryTransport() {
+		return primaryTransport;
+	}
+
+	public TransportType getSecondaryTransport() {
+		return secondaryTransport;
+	}
 }

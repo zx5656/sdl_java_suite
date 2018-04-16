@@ -19,14 +19,20 @@ import android.os.TransactionTooLargeException;
 import android.util.Log;
 
 import com.smartdevicelink.protocol.SdlPacket;
+import com.smartdevicelink.protocol.enums.SessionType;
 import com.smartdevicelink.transport.enums.TransportType;
 import com.smartdevicelink.transport.utl.ByteAraryMessageAssembler;
 import com.smartdevicelink.transport.utl.ByteArrayMessageSpliter;
 
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 
 public class TransportBroker {
@@ -47,13 +53,25 @@ public class TransportBroker {
 	boolean isBound = false, registeredWithRouterService = false;
 	private String routerPackage = null, routerClassName = null;
 	private ComponentName routerService = null;
-	
+	private TransportType primaryTransport = null;
+	private TransportType secondaryTransport = null;
 	
 	private SdlPacket bufferedPacket = null;
 	private ByteAraryMessageAssembler bufferedPayloadAssembler = null;
 	
 	private ServiceConnection routerConnection;
 	private int routerServiceVersion = 1;
+
+	// IDs for setting desired transport for packet
+	public static final int PRIMARY_TRANSPORT_ID = 0;
+	public static final int SECONDARY_TRANSPORT_ID = 1;
+	public static final int SECONDARY_THEN_PRIMARY_TRANSPORT_ID = 2;
+	public static final int NO_VALID_TRANSPORT_ID = -1;
+
+	// Session to Transport Map: Stores which transports a packet for a given session can be sent to core on
+	// This map should be updated when the RPC Start Service ACK frame is received from core
+	private HashMap<SessionType, Set<TransportType>> sttMap = null;
+	private TransportType[] standardPrimaryTransports = {TransportType.BLUETOOTH, TransportType.USB};
 	
 	private void initRouterConnection(){
 		routerConnection= new ServiceConnection() {
@@ -292,7 +310,7 @@ public class TransportBroker {
 			
 		
 		@SuppressLint("SimpleDateFormat")
-		public TransportBroker(Context context, String appId, ComponentName service){
+		public TransportBroker(Context context, String appId, ComponentName service, TransportType primaryTransport, TransportType secondaryTransport){
 			synchronized(INIT_LOCK){
 				clientMessenger = new Messenger(new ClientHandler(this));
 				initRouterConnection();
@@ -311,7 +329,21 @@ public class TransportBroker {
 				currentContext = context;
 				//Log.d(TAG, "Registering our reply receiver: " + whereToReply);
 				this.routerService = service;
+				this.primaryTransport = primaryTransport;
+				this.secondaryTransport = secondaryTransport;
+				initializeSTTMap();
 			}
+		}
+
+		/*
+		 * This fills the Session to Transports Map with the standard primary transports allowed by all instances of Core:
+		 * BT and USB for RPC, CONTROL, and BULK DATA services
+		 */
+		private void initializeSTTMap(){
+			sttMap = new HashMap<>();
+			sttMap.put(SessionType.RPC, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
+			sttMap.put(SessionType.CONTROL, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
+			sttMap.put(SessionType.BULK_DATA, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
 		}
 
 		/**
@@ -385,6 +417,7 @@ public class TransportBroker {
 				routerServiceMessenger = null;
 				routerConnection = null;
 				queuedOnTransportConnect = null;
+				// TODO: find out how to to communicate this back to the proxy
 			}
 		}
 		
@@ -394,13 +427,14 @@ public class TransportBroker {
 					queuedOnTransportConnect = type;
 					return false;
 				}
+				// TODO: find out how to to communicate this back to the proxy
 				return true;
 			}
 			
 		}
 		
 		public void onPacketReceived(Parcelable packet){
-			
+
 		}
 
 		public void onLegacyModeEnabled(){
@@ -452,6 +486,7 @@ public class TransportBroker {
 				if(routerServiceVersion< TransportConstants.RouterServiceVersions.APPID_STRING){
 					bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId));
 				}
+				bundle.putInt(TransportConstants.TRANSPORT_PREFERENCE_ID_EXTRA, getTransportPreference(packet.getServiceType()));
 				bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
 				bundle.putByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME, bytes); //Do we just change this to the args and objs
 				bundle.putInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0);
@@ -473,8 +508,24 @@ public class TransportBroker {
 			}
 			
 		}
-		
-		/**
+
+
+	private int getTransportPreference(int serviceType) {
+		SessionType sessionType = SessionType.valueOf((byte) serviceType);
+		Set<TransportType> availableTransports = sttMap.get(sessionType);
+		if(availableTransports != null){
+			if(availableTransports.contains(secondaryTransport) && availableTransports.contains(primaryTransport)){
+				return SECONDARY_THEN_PRIMARY_TRANSPORT_ID;
+			}else if(availableTransports.contains(secondaryTransport)){
+				return SECONDARY_TRANSPORT_ID;
+			}else if(availableTransports.contains(primaryTransport)){
+				return PRIMARY_TRANSPORT_ID;
+			}
+		}
+		return NO_VALID_TRANSPORT_ID;
+	}
+
+	/**
 		 * This registers this service with the router service
 		 */
 		private boolean registerWithRouterService(){ 
@@ -530,6 +581,8 @@ public class TransportBroker {
 			Bundle bundle = new Bundle();
 			bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId)); //We send this no matter what due to us not knowing what router version we are connecting to
 			bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
+			bundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, primaryTransport.toString());
+			bundle.putString(TransportConstants.TRANSPORT_SECONDARY_EXTRA, secondaryTransport.toString());
 			msg.setData(bundle);
 			sendMessageToRouterService(msg);
 		}

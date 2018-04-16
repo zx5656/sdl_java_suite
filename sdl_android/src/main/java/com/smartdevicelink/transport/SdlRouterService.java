@@ -1,16 +1,24 @@
 package com.smartdevicelink.transport;
 
+
+import static com.smartdevicelink.transport.TransportBroker.PRIMARY_TRANSPORT_ID;
+import static com.smartdevicelink.transport.TransportBroker.SECONDARY_THEN_PRIMARY_TRANSPORT_ID;
+import static com.smartdevicelink.transport.TransportBroker.SECONDARY_TRANSPORT_ID;
 import static com.smartdevicelink.transport.TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME;
 import static com.smartdevicelink.transport.TransportConstants.FORMED_PACKET_EXTRA_NAME;
 import static com.smartdevicelink.transport.TransportConstants.HARDWARE_DISCONNECTED;
 import static com.smartdevicelink.transport.TransportConstants.SEND_PACKET_TO_APP_LOCATION_EXTRA_NAME;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
@@ -81,6 +89,8 @@ import com.smartdevicelink.util.SdlAppInfo;
 import static com.smartdevicelink.transport.TransportConstants.FOREGROUND_EXTRA;
 import static com.smartdevicelink.transport.TransportConstants.SDL_NOTIFICATION_CHANNEL_ID;
 import static com.smartdevicelink.transport.TransportConstants.SDL_NOTIFICATION_CHANNEL_NAME;
+import static com.smartdevicelink.transport.TransportConstants.TRANSPORT_PRIMARY_EXTRA;
+import static com.smartdevicelink.transport.TransportConstants.TRANSPORT_SECONDARY_EXTRA;
 
 /**
  * <b>This class should not be modified by anyone outside of the approved contributors of the SmartDeviceLink project.</b>
@@ -156,8 +166,7 @@ public class SdlRouterService extends Service{
 	
 	private ExecutorService packetExecutor = null;
 	PacketWriteTaskMaster packetWriteTaskMaster = null;
-
-
+	
 	/**
 	 * This flag is to keep track of if we are currently acting as a foreground service
 	 */
@@ -352,8 +361,11 @@ public class SdlRouterService extends Service{
 	                		}
 	                		break;
 	                	}
-	                	
-	                	RegisteredApp app = service.new RegisteredApp(appId,msg.replyTo);
+
+		                TransportType primaryTransport = TransportType.valueForString(receivedBundle.getString(TransportConstants.TRANSPORT_PRIMARY_EXTRA));
+		                TransportType secondaryTransport = TransportType.valueForString(receivedBundle.getString(TRANSPORT_SECONDARY_EXTRA));
+
+	                	RegisteredApp app = service.new RegisteredApp(appId, msg.replyTo, primaryTransport, secondaryTransport);
 	                	synchronized(service.REGISTERED_APPS_LOCK){
 	                		RegisteredApp old = registeredApps.put(app.getAppId(), app); 
 	                		if(old!=null){
@@ -428,6 +440,8 @@ public class SdlRouterService extends Service{
 									synchronized(service.REGISTERED_APPS_LOCK){
                                         buffApp = registeredApps.get(buffAppId);
                                     }
+                                    receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.getPrimaryTransport().toString());
+					                receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.getPrimaryTransport().toString());
 
 									if(buffApp !=null){
                                         buffApp.handleIncommingClientMessage(receivedBundle);
@@ -514,7 +528,7 @@ public class SdlRouterService extends Service{
 	                    super.handleMessage(msg);
 	            }
 	        }
-	    }
+		 }
 
 	    
 	    /**
@@ -1454,28 +1468,56 @@ public class SdlRouterService extends Service{
 			if(bundle == null){
 				return false;
 			}
-			byte[] packet = bundle.getByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME);
-			if(packet==null) {
-				Log.w(TAG, "Ignoring null packet");
+
+			int requestedTransportId = bundle.getInt(TransportConstants.TRANSPORT_PREFERENCE_ID_EXTRA);
+			TransportType primaryTransport = TransportType.valueForString(bundle.getString(TRANSPORT_PRIMARY_EXTRA));
+			TransportType secondaryTransport = TransportType.valueForString(bundle.getString(TRANSPORT_SECONDARY_EXTRA));
+
+			if(requestedTransportId > SECONDARY_THEN_PRIMARY_TRANSPORT_ID || requestedTransportId < PRIMARY_TRANSPORT_ID){
+				Log.e(TAG, "Invalid transport requested. (Not primary or secondary)");
 				return false;
 			}
-			int offset = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0); //If nothing, start at the beginning of the array
-			int count = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_COUNT, packet.length);  //In case there isn't anything just send the whole packet.
+			if(requestedTransportId >= SECONDARY_TRANSPORT_ID){
+				if(secondaryTransport != null && isTransportConnected(secondaryTransport)){
+					return writeBytesToSpecificTransport(bundle, secondaryTransport);
+				}else if(requestedTransportId == SECONDARY_TRANSPORT_ID){
+					Log.i(TAG, "Secondary transport is invalid or not connected.");
+					return false;
+				}
+			}
+			if(primaryTransport != null && isTransportConnected(primaryTransport)){
+				return writeBytesToSpecificTransport(bundle, primaryTransport);
+			}
+			Log.i(TAG, "Primary transport is invalid or not connected.");
+			return false;
+		}
 
-			if(bluetoothTransport !=null && bluetoothTransport.getState() == MultiplexBluetoothTransport.STATE_CONNECTED){
-				bluetoothTransport.write(packet,offset,count);
-				return true;
-			}else if(usbTransport != null && usbTransport.getState() ==  MultiplexBaseTransport.STATE_CONNECTED){
-				usbTransport.write(packet,offset,count);
-				return true;
-
+		private boolean writeBytesToSpecificTransport(Bundle bundle, TransportType transportType){
+	 	    MultiplexBaseTransport baseTransport = null;
+	 	    if(transportType.equals(TransportType.BLUETOOTH)){
+		        baseTransport = bluetoothTransport;
+	        }else if(transportType.equals(TransportType.TCP)){
+		        baseTransport = usbTransport;
+			}else if(transportType.equals(TransportType.USB)){
+		        baseTransport = null;
+	 	    	// set to USB transport
+	        }
+			if(baseTransport != null && baseTransport.getState() == MultiplexBaseTransport.STATE_CONNECTED){
+				byte[] packet = bundle.getByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME);
+				if(packet!=null){
+					int offset = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0); //If nothing, start at the beginning of the array
+					int count = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_COUNT, packet.length);  //In case there isn't anything just send the whole packet.
+					baseTransport.write(packet,offset,count);
+					return true;
+				}
+				return false;
 			}else if(sendThroughAltTransport(bundle)){
 				return true;
 			}
 			else{
 				Log.e(TAG, "Can't send data, no transport connected");
 				return false;
-			}	
+			}
 		}
 		
 		private boolean manuallyWriteBytes(byte[] bytes, int offset, int count){
@@ -1513,6 +1555,18 @@ public class SdlRouterService extends Service{
 				Log.w(TAG, "Unable to send packet through alt transport, it was null");
 			}
 			return false;		
+		}
+
+		private boolean isTransportConnected(TransportType transportType){
+			if(transportType.equals(TransportType.BLUETOOTH)){
+				return bluetoothTransport.isConnected();
+			}else if(transportType.equals(TransportType.TCP)){
+				return false;
+				// TODO: return whether TCP transport in RouterService is connected
+			}else if(transportType.equals(TransportType.USB)){
+				return usbTransport.isConnected();
+			}
+			return false;
 		}
 		
 		 /** This Method will send the packets through the alt transport that is connected
@@ -2269,21 +2323,24 @@ public class SdlRouterService extends Service{
 		Handler queueWaitHandler= null;
 		Runnable queueWaitRunnable = null;
 		boolean queuePaused = false;
+		TransportType primaryTransport = null;
+		TransportType secondaryTransport = null;
 		
 		/**
 		 * This is a simple class to hold onto a reference of a registered app.
 		 * @param appId the supplied id for this app that is attempting to register
 		 * @param messenger the specific messenger that is tied to this app
 		 */
-		public RegisteredApp(String appId, Messenger messenger){			
+		public RegisteredApp(String appId, Messenger messenger, TransportType primaryTransport, TransportType secondaryTransport){
 			this.appId = appId;
 			this.messenger = messenger;
 			this.sessionIds = new Vector<Long>();
 			this.queue = new PacketWriteTaskBlockingQueue();
 			queueWaitHandler = new Handler();
+			this.primaryTransport = primaryTransport;
+			this.secondaryTransport = secondaryTransport;
 			setDeathNote();
 		}
-
 		
 		/**
 		 * Closes this app properly. 
@@ -2305,6 +2362,14 @@ public class SdlRouterService extends Service{
 		
 		public String getAppId() {
 			return appId;
+		}
+
+		public TransportType getPrimaryTransport() {
+			return primaryTransport;
+		}
+
+		public TransportType getSecondaryTransport() {
+			return secondaryTransport;
 		}
 
 		/*public long getAppId() {

@@ -60,7 +60,9 @@ public class TransportConstants {
 	public static final String SDL_NOTIFICATION_CHANNEL_ID 						= "sdl_notification_channel";
 	public static final String SDL_NOTIFICATION_CHANNEL_NAME 					= "SmartDeviceLink";
 
-
+	public static final String TRANSPORT_PRIMARY_EXTRA                         = "transport.primary.extra";
+	public static final String TRANSPORT_SECONDARY_EXTRA                       = "transport.secondary.extra";
+	public static final String TRANSPORT_PREFERENCE_ID_EXTRA                   = "transport.preference.extra";
 
 
 	/**
