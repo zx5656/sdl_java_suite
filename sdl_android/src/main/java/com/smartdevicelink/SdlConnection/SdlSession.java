@@ -513,13 +513,18 @@ public class SdlSession implements ISdlConnectionListener, IHeartbeatMonitorList
 	}
 
 	@Override
-	public void onTransportDisconnected(String info) {
-		this.sessionListener.onTransportDisconnected(info);
+	public void onTransportConnected(TransportType transportType) {
+		this.sessionListener.onTransportConnected(transportType);
 	}
 
 	@Override
-	public void onTransportError(String info, Exception e) {
-		this.sessionListener.onTransportError(info, e);
+	public void onTransportDisconnected(TransportType transportType, String info) {
+		this.sessionListener.onTransportDisconnected(transportType, info);
+	}
+
+	@Override
+	public void onTransportError(TransportType transportType, String info, Exception e) {
+		this.sessionListener.onTransportError(transportType, info, e);
 	}
 
 	@Override

@@ -43,7 +43,7 @@ public abstract class SdlTransport {
 			} // end-if
 		} catch (Exception excp) {
 			DebugTool.logError(FailurePropagating_Msg + "handleBytesFromTransport: " + excp.toString(), excp);
-			handleTransportError(FailurePropagating_Msg, excp);
+			handleTransportError(null, FailurePropagating_Msg, excp);
 		} // end-catch
     } // end-method
 
@@ -76,34 +76,34 @@ public abstract class SdlTransport {
 
     // This method is called by the subclass to indicate that transport connection
     // has been established.
-	protected void handleTransportConnected() {
+	protected void handleTransportConnected(TransportType transportType) {
 		isConnected = true;
 		try {
 	    	SdlTrace.logTransportEvent("Transport.connected", null, InterfaceActivityDirection.Receive, null, 0, SDL_LIB_TRACE_KEY);
-			_transportListener.onTransportConnected();
+			_transportListener.onTransportConnected(transportType);
 		} catch (Exception excp) {
 			DebugTool.logError(FailurePropagating_Msg + "onTransportConnected: " + excp.toString(), excp);
-			handleTransportError(FailurePropagating_Msg + "onTransportConnected", excp);
+			handleTransportError(transportType, FailurePropagating_Msg + "onTransportConnected", excp);
 		} // end-catch
 	} // end-method
 	
     // This method is called by the subclass to indicate that transport disconnection
     // has occurred.
-	protected void handleTransportDisconnected(final String info) {
+	protected void handleTransportDisconnected(TransportType transportType, final String info) {
 		isConnected = false;
 
 		try {
 	    	SdlTrace.logTransportEvent("Transport.disconnect: " + info, null, InterfaceActivityDirection.Transmit, null, 0, SDL_LIB_TRACE_KEY);
-			_transportListener.onTransportDisconnected(info);
+			_transportListener.onTransportDisconnected(transportType, info);
 		} catch (Exception excp) {
 			DebugTool.logError(FailurePropagating_Msg + "onTransportDisconnected: " + excp.toString(), excp);
 		} // end-catch
 	} // end-method
 	
 	// This method is called by the subclass to indicate a transport error has occurred.
-	protected void handleTransportError(final String message, final Exception ex) {
+	protected void handleTransportError(TransportType transportType, final String message, final Exception ex) {
 		isConnected = false;
-		_transportListener.onTransportError(message, ex);
+		_transportListener.onTransportError(transportType, message, ex);
 	}
 
 	public abstract void openConnection() throws SdlException;

@@ -13,6 +13,8 @@ import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.protocol.SdlPacket;
 import com.smartdevicelink.transport.enums.TransportType;
 
+import java.util.ArrayList;
+
 public class MultiplexTransport extends SdlTransport{
 	private final static String TAG = "Multiplex Transport";
 	private String sComment = "Multiplexing";
@@ -23,7 +25,7 @@ public class MultiplexTransport extends SdlTransport{
 	public MultiplexTransport(MultiplexTransportConfig transportConfig, final ITransportListener transportListener){
 		super(transportListener);
 		if(transportConfig == null){
-			this.handleTransportError("Transport config was null", null);
+			this.handleTransportError(null, "Transport config was null", null);
 			throw new IllegalArgumentException("Null transportConfig in MultiplexTransport constructor");
 		}
 		this.transportConfig = transportConfig;
@@ -105,7 +107,7 @@ public class MultiplexTransport extends SdlTransport{
 				brokerThread.cancel();
 				brokerThread = null;
 			}
-			handleTransportDisconnected(TransportType.MULTIPLEX.name());
+			handleTransportDisconnected(null, TransportType.MULTIPLEX.name());
 			isDisconnecting = false;
 		
 	}
@@ -113,13 +115,13 @@ public class MultiplexTransport extends SdlTransport{
 	
 
 	@Override
-	protected void handleTransportError(String message, Exception ex) {
+	protected void handleTransportError(TransportType transportType, String message, Exception ex) {
 		if(brokerThread!=null){
 			brokerThread.cancel();
 			//brokerThread.interrupt();
 			brokerThread = null;
 		}
-		super.handleTransportError(message, ex);
+		super.handleTransportError(transportType, message, ex);
 	}
 
 	
@@ -166,7 +168,7 @@ public class MultiplexTransport extends SdlTransport{
 					try{
 						broker.start();
 					}catch(Exception e){
-						handleTransportError("Error starting transport", e);
+						handleTransportError(null, "Error starting transport", e);
 					}
 				}else{
 					queueStart = true;
@@ -195,7 +197,7 @@ public class MultiplexTransport extends SdlTransport{
 
 		public void onHardwareConnected(TransportType type){
 			if(broker!=null){
-				broker.onHardwareConnected(type);
+				broker.onHardwareConnected(type, null);
 			}else{
 				queueStart = true;
 			}
@@ -226,7 +228,7 @@ public class MultiplexTransport extends SdlTransport{
 						try{
 							broker.start();
 						}catch(Exception e){
-							handleTransportError("Error starting transport", e);
+							handleTransportError(null,"Error starting transport", e);
 						}
 					}
 					this.notify();
@@ -242,27 +244,25 @@ public class MultiplexTransport extends SdlTransport{
 			broker = new TransportBroker(context, appId, service, primaryTransport, secondaryTransport){
 				
 				@Override
-				public boolean onHardwareConnected(TransportType type) {
-					if(super.onHardwareConnected(type)){
+				public boolean onHardwareConnected(TransportType type, ArrayList<TransportType> remaining) {
+					if(super.onHardwareConnected(type, null)){
 						Log.d(TAG, "On transport connected...");
-						if(!connected){
-							connected = true;
-							handleTransportConnected();
-						}//else{Log.d(TAG, "Already connected");}
+						handleTransportConnected(type);
 						return true;
 					}else{
 						try{
 							this.start();
 						}catch(Exception e){
-							handleTransportError("Error starting transport", e);
+							handleTransportError(type,"Error starting transport", e);
 						}
 					}
 					return false;
 				}
 
 				@Override
-				public void onHardwareDisconnected(TransportType type) {
-					super.onHardwareDisconnected(type);
+				public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining) {
+					super.onHardwareDisconnected(type, null);
+					handleTransportDisconnected(type, "");
 					if(connected){
 						Log.d(TAG, "Handling disconnect");
 						connected = false;
@@ -272,11 +272,11 @@ public class MultiplexTransport extends SdlTransport{
 							this.stop();
 							isDisconnecting = true;
 							//handleTransportDisconnected("");
-							handleTransportError("",null); //This seems wrong, but it works
+							handleTransportError(type, "",null); //This seems wrong, but it works
 						}else{
 							Log.d(TAG, "Handle transport Error");
 							isDisconnecting = true;
-							handleTransportError("",null); //This seems wrong, but it works
+							handleTransportError(type, "",null); //This seems wrong, but it works
 						}
 					}
 				}
@@ -290,7 +290,7 @@ public class MultiplexTransport extends SdlTransport{
 						this.stop();
 						isDisconnecting = true;
 						//handleTransportDisconnected("");
-						handleTransportError("",null); //This seems wrong, but it works
+						handleTransportError(null,"",null); //This seems wrong, but it works
 					}
 				}
 

@@ -430,12 +430,12 @@ public class USBTransport extends SdlTransport {
                     // This disconnect was not caused by an error, notify the
                     // proxy that the transport has been disconnected.
                     logI("Disconnect is correct. Handling it");
-                    handleTransportDisconnected(disconnectMsg);
+                    handleTransportDisconnected(TransportType.USB, disconnectMsg);
                 } else {
                     // This disconnect was caused by an error, notify the proxy
                     // that there was a transport error.
                     logI("Disconnect is incorrect. Handling it as error");
-                    handleTransportError(disconnectMsg, ex);
+                    handleTransportError(TransportType.USB, disconnectMsg, ex);
                 }
                 break;
 
@@ -753,7 +753,7 @@ public class USBTransport extends SdlTransport {
                     
 					synchronized (USBTransport.this) {
                         setState(State.CONNECTED);
-                        handleTransportConnected();
+                        handleTransportConnected(TransportType.USB);
                     }
                     break;
 

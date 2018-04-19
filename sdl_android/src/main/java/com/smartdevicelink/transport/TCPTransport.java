@@ -233,12 +233,12 @@ public class TCPTransport extends SdlTransport {
             // This disconnect was not caused by an error, notify the proxy that
             // the transport has been disconnected.
             logInfo("Disconnect is correct. Handling it");
-            handleTransportDisconnected(disconnectMsg);
+            handleTransportDisconnected(TransportType.TCP, disconnectMsg);
         } else {
             // This disconnect was caused by an error, notify the proxy
             // that there was a transport error.
             logError("Disconnect is incorrect. Handling it as error");
-            handleTransportError(disconnectMsg, exception);
+            handleTransportError(TransportType.TCP, disconnectMsg, exception);
         }
     }
 
@@ -379,7 +379,7 @@ public class TCPTransport extends SdlTransport {
 
                 synchronized (TCPTransport.this) {
                     setCurrentState(TCPTransportState.CONNECTED);
-                    handleTransportConnected();
+                    handleTransportConnected(TransportType.TCP);
                 }
 
                 byte input;

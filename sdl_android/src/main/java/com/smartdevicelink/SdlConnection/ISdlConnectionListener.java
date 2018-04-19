@@ -2,14 +2,17 @@ package com.smartdevicelink.SdlConnection;
 
 import com.smartdevicelink.protocol.ProtocolMessage;
 import com.smartdevicelink.protocol.enums.SessionType;
+import com.smartdevicelink.transport.enums.TransportType;
 
 import java.util.List;
 
 
 public interface ISdlConnectionListener {
-	public void onTransportDisconnected(String info);
+	public void onTransportConnected(TransportType transportType);
+
+	public void onTransportDisconnected(TransportType transportType, String info);
 	
-	public void onTransportError(String info, Exception e);
+	public void onTransportError(TransportType transportType, String info, Exception e);
 	
 	public void onProtocolMessageReceived(ProtocolMessage msg);
 	

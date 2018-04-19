@@ -2,10 +2,10 @@ package com.smartdevicelink.transport;
 
 
 import static com.smartdevicelink.transport.TransportBroker.PRIMARY_TRANSPORT_ID;
-import static com.smartdevicelink.transport.TransportBroker.SECONDARY_THEN_PRIMARY_TRANSPORT_ID;
 import static com.smartdevicelink.transport.TransportBroker.SECONDARY_TRANSPORT_ID;
 import static com.smartdevicelink.transport.TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME;
 import static com.smartdevicelink.transport.TransportConstants.FORMED_PACKET_EXTRA_NAME;
+import static com.smartdevicelink.transport.TransportConstants.HARDWARE_CONNECTED;
 import static com.smartdevicelink.transport.TransportConstants.HARDWARE_DISCONNECTED;
 import static com.smartdevicelink.transport.TransportConstants.SEND_PACKET_TO_APP_LOCATION_EXTRA_NAME;
 
@@ -377,13 +377,18 @@ public class SdlRouterService extends Service{
 	                	service.onAppRegistered(app);
 
 	            		returnBundle = new Bundle();
-	            		//Add params if connected
+	            		ArrayList<String> connectedTransports = service.getConnectedTransports();
+	            		if(!connectedTransports.isEmpty()){
+				            returnBundle.putString(TransportConstants.HARDWARE_CONNECTED, connectedTransports.get(connectedTransports.size() - 1));
+			            }
+	            		/*Add params if connected
 	            		if(service.isTransportConnected){
 	            			returnBundle.putString(TransportConstants.HARDWARE_CONNECTED, service.connectedTransportType.name());
 	                		if(MultiplexBluetoothTransport.currentlyConnectedDevice!=null){
 	                			returnBundle.putString(CONNECTED_DEVICE_STRING_EXTRA_NAME, MultiplexBluetoothTransport.currentlyConnectedDevice);
 	                		}
 	            		}
+	            		*/
 	            		//Add the version of this router service
 	            		returnBundle.putInt(TransportConstants.ROUTER_SERVICE_VERSION, SdlRouterService.ROUTER_SERVICE_VERSION_NUMBER);
 	            		
@@ -440,10 +445,10 @@ public class SdlRouterService extends Service{
 									synchronized(service.REGISTERED_APPS_LOCK){
                                         buffApp = registeredApps.get(buffAppId);
                                     }
-                                    receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.getPrimaryTransport().toString());
-					                receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.getPrimaryTransport().toString());
 
 									if(buffApp !=null){
+										receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.getPrimaryTransport().toString());
+										receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.getPrimaryTransport().toString());
                                         buffApp.handleIncommingClientMessage(receivedBundle);
                                     }else{
                                         service.writeBytesToTransport(receivedBundle);
@@ -1307,15 +1312,16 @@ public class SdlRouterService extends Service{
 		//HARDWARE_CONNECTED
     	if(!(registeredApps== null || registeredApps.isEmpty())){
     		//If we have clients
-			notifyClients(createHardwareConnectedMessage(type));
+			notifyClients(createTransportConnectedMessage(type));
     	}
 	}
-	
-	private Message createHardwareConnectedMessage(final TransportType type){
+
+	private Message createTransportConnectedMessage(final TransportType type){
 			Message message = Message.obtain();
 			message.what = TransportConstants.HARDWARE_CONNECTION_EVENT;
 			Bundle bundle = new Bundle();
-			bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.name());
+			bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.toString());
+			bundle.putStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST, getConnectedTransports());
     		if(MultiplexBluetoothTransport.currentlyConnectedDevice!=null){
     			bundle.putString(CONNECTED_DEVICE_STRING_EXTRA_NAME, MultiplexBluetoothTransport.currentlyConnectedDevice);
     		}
@@ -1323,24 +1329,36 @@ public class SdlRouterService extends Service{
 			return message;
 		
 	}
+
+	private ArrayList<String> getConnectedTransports(){
+		ArrayList<String> connected = new ArrayList<>();
+		for(TransportType transport : TransportType.values()){
+			if(isTransportConnected(transport)){
+				connected.add(transport.toString());
+			}
+		}
+		return connected;
+	}
 	
 	public void onTransportDisconnected(TransportType type){
 		if(altTransportService!=null){  //If we still have an alt transport open, then we don't need to tell the clients to close
 			return;
 		}
-		switch (type){
-            case BLUETOOTH:
-                if(!connectAsClient ){
-                    if(!legacyModeEnabled && !closing){
-                        initBluetoothSerialService();
-                    }
-                }
-                break;
-            case USB:
-                break;
-            case TCP:
-                break;
-        }
+		if(type != null) {
+			switch (type) {
+				case BLUETOOTH:
+					if (!connectAsClient) {
+						if (!legacyModeEnabled && !closing) {
+							initBluetoothSerialService();
+						}
+					}
+					break;
+				case USB:
+					break;
+				case TCP:
+					break;
+			}
+		}
 		Log.e(TAG, "Notifying client service of hardware disconnect.");
 		connectedTransportType = null;
 		isTransportConnected = false;
@@ -1358,9 +1376,9 @@ public class SdlRouterService extends Service{
 			Message message = Message.obtain();
 			message.what = TransportConstants.HARDWARE_CONNECTION_EVENT;
 			Bundle bundle = new Bundle();
-			bundle.putString(HARDWARE_DISCONNECTED, type.name());
+			bundle.putString(HARDWARE_DISCONNECTED, type != null ? type.name() : null);
 			bundle.putBoolean(TransportConstants.ENABLE_LEGACY_MODE_EXTRA, legacyModeEnabled);
-			//TODO put other transports still connected
+			bundle.putStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST, getConnectedTransports());
 			message.setData(bundle);
 			notifyClients(message);
 		}
@@ -1473,34 +1491,32 @@ public class SdlRouterService extends Service{
 			TransportType primaryTransport = TransportType.valueForString(bundle.getString(TRANSPORT_PRIMARY_EXTRA));
 			TransportType secondaryTransport = TransportType.valueForString(bundle.getString(TRANSPORT_SECONDARY_EXTRA));
 
-			if(requestedTransportId > SECONDARY_THEN_PRIMARY_TRANSPORT_ID || requestedTransportId < PRIMARY_TRANSPORT_ID){
-				Log.e(TAG, "Invalid transport requested. (Not primary or secondary)");
-				return false;
-			}
-			if(requestedTransportId >= SECONDARY_TRANSPORT_ID){
+			if(requestedTransportId == SECONDARY_TRANSPORT_ID){
 				if(secondaryTransport != null && isTransportConnected(secondaryTransport)){
 					return writeBytesToSpecificTransport(bundle, secondaryTransport);
-				}else if(requestedTransportId == SECONDARY_TRANSPORT_ID){
+				}else{
 					Log.i(TAG, "Secondary transport is invalid or not connected.");
-					return false;
+				}
+			}else if(requestedTransportId == PRIMARY_TRANSPORT_ID){
+				if(primaryTransport != null && isTransportConnected(primaryTransport)){
+					return writeBytesToSpecificTransport(bundle, primaryTransport);
+				}else{
+					Log.i(TAG, "Primary transport is invalid or not connected.");
 				}
 			}
-			if(primaryTransport != null && isTransportConnected(primaryTransport)){
-				return writeBytesToSpecificTransport(bundle, primaryTransport);
-			}
-			Log.i(TAG, "Primary transport is invalid or not connected.");
+			Log.i(TAG, "Bytes not sent over any transport.");
 			return false;
 		}
 
 		private boolean writeBytesToSpecificTransport(Bundle bundle, TransportType transportType){
 	 	    MultiplexBaseTransport baseTransport = null;
-	 	    if(transportType.equals(TransportType.BLUETOOTH)){
+	 	    if(transportType.equals(TransportType.MULTIPLEX)){
 		        baseTransport = bluetoothTransport;
 	        }else if(transportType.equals(TransportType.TCP)){
-		        baseTransport = usbTransport;
-			}else if(transportType.equals(TransportType.USB)){
 		        baseTransport = null;
-	 	    	// set to USB transport
+		        // set to TCP transport
+			}else if(transportType.equals(TransportType.USB)){
+		        baseTransport = usbTransport;
 	        }
 			if(baseTransport != null && baseTransport.getState() == MultiplexBaseTransport.STATE_CONNECTED){
 				byte[] packet = bundle.getByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME);
@@ -1508,6 +1524,7 @@ public class SdlRouterService extends Service{
 					int offset = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0); //If nothing, start at the beginning of the array
 					int count = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_COUNT, packet.length);  //In case there isn't anything just send the whole packet.
 					baseTransport.write(packet,offset,count);
+					Log.i(TAG, "Writing to " + baseTransport.toString());
 					return true;
 				}
 				return false;
@@ -1558,12 +1575,12 @@ public class SdlRouterService extends Service{
 		}
 
 		private boolean isTransportConnected(TransportType transportType){
-			if(transportType.equals(TransportType.BLUETOOTH)){
+			if(bluetoothTransport != null && transportType.equals(TransportType.MULTIPLEX)){
 				return bluetoothTransport.isConnected();
 			}else if(transportType.equals(TransportType.TCP)){
 				return false;
 				// TODO: return whether TCP transport in RouterService is connected
-			}else if(transportType.equals(TransportType.USB)){
+			}else if(usbTransport != null && transportType.equals(TransportType.USB)){
 				return usbTransport.isConnected();
 			}
 			return false;

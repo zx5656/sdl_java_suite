@@ -213,9 +213,8 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 	}
 
 	@Override
-	public void onTransportConnected() {
+	public void onTransportConnected(TransportType transportType) {
 		synchronized(PROTOCOL_REFERENCE_LOCK){
-			//TODO: communicate to proxy
 			if(_protocol != null){
 				boolean shouldRequestSession = _transport !=null  && _transport.getTransportType()== TransportType.MULTIPLEX;
 					for (SdlSession s : listenerList) {
@@ -227,19 +226,20 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 						}
 					}
 				}
+				_connectionListener.onTransportConnected(transportType);
 			}
 	}
 	
 	@Override
-	public void onTransportDisconnected(String info) {
+	public void onTransportDisconnected(TransportType transportType, String info) {
 		// Pass directly to connection listener
-		_connectionListener.onTransportDisconnected(info);
+		_connectionListener.onTransportDisconnected(transportType, info);
 	}
 
 	@Override
-	public void onTransportError(String info, Exception e) {
+	public void onTransportError(TransportType transportType, String info, Exception e) {
 		// Pass directly to connection listener
-		_connectionListener.onTransportError(info, e);
+		_connectionListener.onTransportError(transportType, info, e);
 	}
 
 	@Override
@@ -345,9 +345,16 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 	private class InternalMsgDispatcher implements ISdlConnectionListener {
 
 		@Override
-		public void onTransportDisconnected(String info) {
+		public void onTransportConnected(TransportType transportType) {
 			for (SdlSession session : listenerList) {
-				session.onTransportDisconnected(info);
+				session.onTransportConnected(transportType);
+			}
+		}
+
+		@Override
+		public void onTransportDisconnected(TransportType type, String info) {
+			for (SdlSession session : listenerList) {
+				session.onTransportDisconnected(type, info);
 			}
 			if(cachedMultiConfig!=null ){
 				if(cachedMultiConfig.getService()!=null){
@@ -375,8 +382,9 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 		}
 
 		@Override
-		public void onTransportError(String info, Exception e) {
+		public void onTransportError(TransportType type, String info, Exception e) {
 			//If there's an error with the transport we want to make sure we clear out any reference to it held by the static list in sessions
+			Log.i(TAG, "TransportError");
 			SdlSession.removeConnection(SdlConnection.this);
 			//If we are erroring out to go into legacy mode, lets cache our multiplexing
 			if(isLegacyModeEnabled() && _transport!=null && TransportType.MULTIPLEX.equals(_transport.getTransportType())){
@@ -387,7 +395,7 @@ public class SdlConnection implements IProtocolListener, ITransportListener {
 				cachedMultiConfig = null; //It should now be consumed
 			}
 			for (SdlSession session : listenerList) {
-				session.onTransportError(info, e);
+				session.onTransportError(type, info, e);
 			}
 
 		}

@@ -353,4 +353,8 @@ public interface IProxyListenerBase  {
 	public void onOnInteriorVehicleData(OnInteriorVehicleData notification);
 
 	public void onSendHapticDataResponse(SendHapticDataResponse response);
+
+	public void onSecondaryTransportEnabled();
+
+	public void onSecondaryTransportDisabled();
 }

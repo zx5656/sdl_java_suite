@@ -366,7 +366,7 @@ public class BTTransport extends SdlTransport {
 				_output = _activeSocket.getOutputStream();
 				_input = _activeSocket.getInputStream();
 
-				handleTransportConnected();
+				handleTransportConnected(TransportType.BLUETOOTH);
 				
 			} catch (Exception e) {
 				if (!isHalted) {					
@@ -528,16 +528,14 @@ public class BTTransport extends SdlTransport {
 		return sComment;
 	}
 
-	@Override
 	protected void handleTransportDisconnected(String info) {
 		SdlConnection.enableLegacyMode(false, null);
-		super.handleTransportDisconnected(info);
+		super.handleTransportDisconnected(TransportType.BLUETOOTH, info);
 	}
 
-	@Override
 	protected void handleTransportError(String message, Exception ex) {
 		SdlConnection.enableLegacyMode(false, null);
-		super.handleTransportError(message, ex);
+		super.handleTransportError(TransportType.BLUETOOTH, message, ex);
 	}
 	
 } // end-class

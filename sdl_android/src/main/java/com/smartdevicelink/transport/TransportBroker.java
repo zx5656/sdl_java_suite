@@ -55,6 +55,7 @@ public class TransportBroker {
 	private ComponentName routerService = null;
 	private TransportType primaryTransport = null;
 	private TransportType secondaryTransport = null;
+	private ArrayList<TransportType> validTransports = null;
 	
 	private SdlPacket bufferedPacket = null;
 	private ByteAraryMessageAssembler bufferedPayloadAssembler = null;
@@ -65,13 +66,12 @@ public class TransportBroker {
 	// IDs for setting desired transport for packet
 	public static final int PRIMARY_TRANSPORT_ID = 0;
 	public static final int SECONDARY_TRANSPORT_ID = 1;
-	public static final int SECONDARY_THEN_PRIMARY_TRANSPORT_ID = 2;
-	public static final int NO_VALID_TRANSPORT_ID = -1;
 
 	// Session to Transport Map: Stores which transports a packet for a given session can be sent to core on
 	// This map should be updated when the RPC Start Service ACK frame is received from core
 	private HashMap<SessionType, Set<TransportType>> sttMap = null;
-	private TransportType[] standardPrimaryTransports = {TransportType.BLUETOOTH, TransportType.USB};
+	private TransportType[] standardPrimaryTransports = {TransportType.MULTIPLEX, TransportType.USB};
+	private TransportType[] standardSecondaryTransports = {TransportType.USB};
 	
 	private void initRouterConnection(){
 		routerConnection= new ServiceConnection() {
@@ -90,7 +90,7 @@ public class TransportBroker {
 				routerServiceMessenger = null;
 				registeredWithRouterService = false;
 				isBound = false;
-				onHardwareDisconnected(null);
+				onHardwareDisconnected(null, null);
 			}
 		};
 	}
@@ -128,7 +128,7 @@ public class TransportBroker {
     					routerServiceMessenger = null;
     					registeredWithRouterService = false;
     					isBound = false;
-    					onHardwareDisconnected(null);
+    					onHardwareDisconnected(null, null);
     					return false;
     				}
     			} catch (NullPointerException e){
@@ -136,7 +136,7 @@ public class TransportBroker {
 					routerServiceMessenger = null;
 					registeredWithRouterService = false;
 					isBound = false;
-					onHardwareDisconnected(null);
+					onHardwareDisconnected(null, null);
 					return false;
 				}
     		}else{
@@ -195,7 +195,8 @@ public class TransportBroker {
             					if(bundle.containsKey(TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME)){
             						//Keep track if we actually get this
             					}
-            					broker.onHardwareConnected(TransportType.valueOf(bundle.getString(TransportConstants.HARDWARE_CONNECTED)));
+            					broker.onHardwareConnected(TransportType.valueForString(bundle.getString(TransportConstants.HARDWARE_CONNECTED)),
+							            convertTransportList(bundle.getStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST)));
             				}
             				if(bundle.containsKey(TransportConstants.ROUTER_SERVICE_VERSION)){
             					broker.routerServiceVersion = bundle.getInt(TransportConstants.ROUTER_SERVICE_VERSION);
@@ -282,7 +283,8 @@ public class TransportBroker {
         				if(isLegacyModeEnabled()){
         					broker.onLegacyModeEnabled();
         				}else{
-        					broker.onHardwareDisconnected(TransportType.valueOf(bundle.getString(TransportConstants.HARDWARE_DISCONNECTED)));
+					        broker.onHardwareDisconnected(TransportType.valueForString(bundle.getString(TransportConstants.HARDWARE_DISCONNECTED)),
+							        convertTransportList(bundle.getStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST)));
         				}
         				break;
         			}
@@ -291,7 +293,8 @@ public class TransportBroker {
             			if(bundle!=null && bundle.containsKey(TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME)){
         					//Keep track if we actually get this
         				}
-            			broker.onHardwareConnected(TransportType.valueOf(bundle.getString(TransportConstants.HARDWARE_CONNECTED)));
+				        broker.onHardwareConnected(TransportType.valueForString(bundle.getString(TransportConstants.HARDWARE_CONNECTED)),
+						        convertTransportList(bundle.getStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST)));
         				break;
         			}
             		break;
@@ -300,6 +303,17 @@ public class TransportBroker {
             }   
             
         }
+
+	    private ArrayList<TransportType> convertTransportList(ArrayList<String> stringList) {
+		 	ArrayList<TransportType> transportList = new ArrayList<>();
+		 	if(stringList == null){
+		 		return transportList;
+		    }
+		 	for(String s : stringList){
+				transportList.add(TransportType.valueForString(s));
+		    }
+		    return transportList;
+	    }
     }
 		
 		
@@ -344,6 +358,7 @@ public class TransportBroker {
 			sttMap.put(SessionType.RPC, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
 			sttMap.put(SessionType.CONTROL, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
 			sttMap.put(SessionType.BULK_DATA, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
+			sttMap.put(SessionType.NAV, new HashSet<>(Arrays.asList(standardSecondaryTransports)));
 		}
 
 		/**
@@ -411,23 +426,24 @@ public class TransportBroker {
 			queuedOnTransportConnect = null;
 		}
 		
-		public void onHardwareDisconnected(TransportType type){
+		public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
-				unBindFromRouterService();
-				routerServiceMessenger = null;
-				routerConnection = null;
-				queuedOnTransportConnect = null;
-				// TODO: find out how to to communicate this back to the proxy
+				if((type == null || remaining == null) || type.equals(primaryTransport)) { // dead object or lost primary
+					unBindFromRouterService();
+					routerServiceMessenger = null;
+					routerConnection = null;
+					queuedOnTransportConnect = null;
+				}
 			}
 		}
 		
-		public boolean onHardwareConnected(TransportType type){
+		public boolean  onHardwareConnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
-				if(routerServiceMessenger==null){
+				validTransports = remaining;
+				if(routerServiceMessenger==null){ // no messenger to use
 					queuedOnTransportConnect = type;
 					return false;
 				}
-				// TODO: find out how to to communicate this back to the proxy
 				return true;
 			}
 			
@@ -487,6 +503,8 @@ public class TransportBroker {
 					bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId));
 				}
 				bundle.putInt(TransportConstants.TRANSPORT_PREFERENCE_ID_EXTRA, getTransportPreference(packet.getServiceType()));
+				String temp = (getTransportPreference(packet.getServiceType()) == PRIMARY_TRANSPORT_ID) ? "primary" : "secondary";
+				Log.i(TAG, "Attempting to send over " + temp + " transport");
 				bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
 				bundle.putByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME, bytes); //Do we just change this to the args and objs
 				bundle.putInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0);
@@ -512,17 +530,18 @@ public class TransportBroker {
 
 	private int getTransportPreference(int serviceType) {
 		SessionType sessionType = SessionType.valueOf((byte) serviceType);
-		Set<TransportType> availableTransports = sttMap.get(sessionType);
-		if(availableTransports != null){
-			if(availableTransports.contains(secondaryTransport) && availableTransports.contains(primaryTransport)){
-				return SECONDARY_THEN_PRIMARY_TRANSPORT_ID;
-			}else if(availableTransports.contains(secondaryTransport)){
-				return SECONDARY_TRANSPORT_ID;
-			}else if(availableTransports.contains(primaryTransport)){
-				return PRIMARY_TRANSPORT_ID;
+		if(validTransports != null){
+			if(validTransports.contains(secondaryTransport) && validTransports.contains(primaryTransport)){
+				if(sttMap.get(sessionType).contains(secondaryTransport)){
+					return SECONDARY_TRANSPORT_ID;
+				}else{
+					Log.i(TAG, "Can't send serviceType: " + sessionType.getName() + " over " + secondaryTransport.name());
+				}
+			}else{
+				Log.i(TAG, "Secondary transport " +secondaryTransport.name() + " not available");
 			}
 		}
-		return NO_VALID_TRANSPORT_ID;
+		return PRIMARY_TRANSPORT_ID; // just attempt to send it over primary
 	}
 
 	/**
@@ -542,7 +561,7 @@ public class TransportBroker {
 			if(this.routerService==null){ 
 				if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O) && !isRouterServiceRunning(getContext())){//We should be able to ignore this case because of the validation now
 					Log.d(TAG,whereToReply + " found no router service. Shutting down.");
-					this.onHardwareDisconnected(null);
+					this.onHardwareDisconnected(null, null);
 					return false;
 				}
 			}else{//We were already told where to bind. This should be the case.

@@ -108,6 +108,7 @@ import com.smartdevicelink.trace.SdlTrace;
 import com.smartdevicelink.trace.TraceDeviceInfo;
 import com.smartdevicelink.trace.enums.InterfaceActivityDirection;
 import com.smartdevicelink.transport.BaseTransportConfig;
+import com.smartdevicelink.transport.MultiplexTransportConfig;
 import com.smartdevicelink.transport.SiphonServer;
 import com.smartdevicelink.transport.enums.TransportType;
 import com.smartdevicelink.util.CorrelationIdGenerator;
@@ -349,14 +350,30 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 	
 	// Private Class to Interface with SdlConnection
 	private class SdlInterfaceBroker implements ISdlConnectionListener {
-		
+
 		@Override
-		public void onTransportDisconnected(String info) {
+		public void onTransportConnected(TransportType transportType){
+			if(transportType != null & _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
+				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+					_proxyListener.onSecondaryTransportEnabled();
+				}
+			}
+		}
+
+		@Override
+		public void onTransportDisconnected(TransportType transportType, String info) {
+			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
+				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+					_proxyListener.onSecondaryTransportDisabled();
+				}
+			}
+
 			// proxyOnTransportDisconnect is called to alert the proxy that a requested
 			// disconnect has completed
 			notifyPutFileStreamError(null, info);
 			
 			if (!_advancedLifecycleManagementEnabled) {
+				Log.i(TAG, "Trying to close proxy");
 				// If original model, notify app the proxy is closed so it will delete and reinstanciate 
 				notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
 			}// else If ALM, nothing is required to be done here
@@ -364,8 +381,14 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		}
 
 		@Override
-		public void onTransportError(String info, Exception e) {
+		public void onTransportError(TransportType transportType, String info, Exception e) {
 			DebugTool.logError("Transport failure: " + info, e);
+
+			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
+				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+					_proxyListener.onSecondaryTransportDisabled();
+				}
+			}
 			
 			notifyPutFileStreamError(e, info);
 			

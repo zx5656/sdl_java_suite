@@ -43,8 +43,9 @@ public class TransportConstants {
 	public static final String ENABLE_LEGACY_MODE_EXTRA 					= "ENABLE_LEGACY_MODE_EXTRA";
 	
 	public static final String HARDWARE_DISCONNECTED						= "hardware.disconect";
-	public static final String HARDWARE_CONNECTED							= "hardware.connected";	
-	
+	public static final String HARDWARE_CONNECTED							= "hardware.connected";
+	public static final String HARDWARE_CONNECTED_LIST						= "hardware.connected.list";
+
 	public static final String SEND_PACKET_TO_APP_LOCATION_EXTRA_NAME 		= "senderintent";
 	public static final String SEND_PACKET_TO_ROUTER_LOCATION_EXTRA_NAME 	= "routerintent";
 
