@@ -247,7 +247,10 @@ public class MultiplexTransport extends SdlTransport{
 				public boolean onHardwareConnected(TransportType type, ArrayList<TransportType> remaining) {
 					if(super.onHardwareConnected(type, null)){
 						Log.d(TAG, "On transport connected...");
-						handleTransportConnected(type);
+						if(!connected){
+							connected = true;
+							handleTransportConnected(type);
+						}//else{Log.d(TAG, "Already connected");}
 						return true;
 					}else{
 						try{
