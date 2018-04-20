@@ -428,6 +428,9 @@ public class TransportBroker {
 		
 		public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
+				if(remaining != null) {
+					validTransports = remaining;
+				}
 				if((type == null || remaining == null) || type.equals(primaryTransport)) { // dead object or lost primary
 					unBindFromRouterService();
 					routerServiceMessenger = null;
@@ -439,7 +442,9 @@ public class TransportBroker {
 		
 		public boolean  onHardwareConnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
-				validTransports = remaining;
+				if(remaining != null){
+					validTransports = remaining;
+				}
 				if(routerServiceMessenger==null){ // no messenger to use
 					queuedOnTransportConnect = type;
 					return false;

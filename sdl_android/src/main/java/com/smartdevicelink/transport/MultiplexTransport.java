@@ -245,12 +245,15 @@ public class MultiplexTransport extends SdlTransport{
 				
 				@Override
 				public boolean onHardwareConnected(TransportType type, ArrayList<TransportType> remaining) {
-					if(super.onHardwareConnected(type, null)){
+					if(super.onHardwareConnected(type, remaining)){
 						Log.d(TAG, "On transport connected...");
-						if(!connected){
+						if(type.equals(secondaryTransport)) {
+							handleTransportConnected(type);
+						}else if(!connected){
 							connected = true;
 							handleTransportConnected(type);
-						}//else{Log.d(TAG, "Already connected");}
+						}
+						//else{Log.d(TAG, "Already connected");}
 						return true;
 					}else{
 						try{
@@ -264,9 +267,10 @@ public class MultiplexTransport extends SdlTransport{
 
 				@Override
 				public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining) {
-					super.onHardwareDisconnected(type, null);
-					handleTransportDisconnected(type, "");
-					if(connected){
+					super.onHardwareDisconnected(type, remaining);
+					if(type.equals(secondaryTransport)) {
+						handleTransportDisconnected(type, "");
+					}else if(connected){
 						Log.d(TAG, "Handling disconnect");
 						connected = false;
 						SdlConnection.enableLegacyMode(isLegacyModeEnabled(), TransportType.BLUETOOTH);
