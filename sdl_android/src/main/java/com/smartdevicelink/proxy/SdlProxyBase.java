@@ -354,7 +354,8 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		@Override
 		public void onTransportConnected(TransportType transportType){
 			if(transportType != null & _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
-				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
+				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
 					_proxyListener.onSecondaryTransportEnabled();
 				}
 			}
@@ -363,7 +364,8 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		@Override
 		public void onTransportDisconnected(TransportType transportType, String info) {
 			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
-				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
+				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
 					_proxyListener.onSecondaryTransportDisabled();
 				}
 			}

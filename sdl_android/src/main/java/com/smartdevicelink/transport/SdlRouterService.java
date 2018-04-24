@@ -447,8 +447,12 @@ public class SdlRouterService extends Service{
                                     }
 
 									if(buffApp !=null){
-										receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.getPrimaryTransport().toString());
-										receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.getSecondaryTransport().toString());
+										if(buffApp.primaryTransport != null) {
+											receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.primaryTransport.toString());
+										}
+										if(buffApp.secondaryTransport != null) {
+											receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.secondaryTransport.toString());
+										}
                                         buffApp.handleIncommingClientMessage(receivedBundle);
                                     }else{
                                         service.writeBytesToTransport(receivedBundle);
@@ -1303,6 +1307,7 @@ public class SdlRouterService extends Service{
 		startService.putExtra(TransportConstants.FORCE_TRANSPORT_CONNECTED, true);
 		startService.putExtra(TransportConstants.START_ROUTER_SERVICE_SDL_ENABLED_APP_PACKAGE, getBaseContext().getPackageName());
 		startService.putExtra(TransportConstants.START_ROUTER_SERVICE_SDL_ENABLED_CMP_NAME, new ComponentName(this, this.getClass()));
+		startService.putStringArrayListExtra(TransportConstants.TRANSPORT_PRIMARY_EXTRA, getConnectedTransports());
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 			startService.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 		}

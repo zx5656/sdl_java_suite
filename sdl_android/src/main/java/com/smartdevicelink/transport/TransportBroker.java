@@ -394,7 +394,7 @@ public class TransportBroker {
 		 * This method will end our communication with the router service. 
 		 */
 		public void stop(){
-			//Log.d(TAG, "STOPPING transport broker for " + whereToReply);
+			Log.d(TAG, "STOPPING transport broker for " + whereToReply);
 			synchronized(INIT_LOCK){
 				unregisterWithRouterService();
 				unBindFromRouterService();
@@ -521,7 +521,7 @@ public class TransportBroker {
 				sendMessageToRouterService(message);
 				return true;
 			}else{ //Message is too big for IPC transaction 
-				//Log.w(TAG, "Message too big for single IPC transaction. Breaking apart. Size - " +  bytes.length);
+				Log.w(TAG, "Message too big for single IPC transaction. Breaking apart. Size - " +  bytes.length);
 				ByteArrayMessageSpliter splitter = new ByteArrayMessageSpliter(appId,TransportConstants.ROUTER_SEND_PACKET,bytes,packet.getPrioirtyCoefficient() );	
 				splitter.setRouterServiceVersion(routerServiceVersion);
 				while(splitter.isActive()){
@@ -535,7 +535,7 @@ public class TransportBroker {
 
 	private int getTransportPreference(int serviceType) {
 		SessionType sessionType = SessionType.valueOf((byte) serviceType);
-		if(validTransports != null){
+		if(validTransports != null && secondaryTransport != null){
 			if(validTransports.contains(secondaryTransport) && validTransports.contains(primaryTransport)){
 				if(sttMap.get(sessionType).contains(secondaryTransport)){
 					return SECONDARY_TRANSPORT_ID;
@@ -546,6 +546,7 @@ public class TransportBroker {
 				Log.i(TAG, "Secondary transport " +secondaryTransport.name() + " not available");
 			}
 		}
+		Log.i(TAG, "Setting transport preference to " +primaryTransport.name());
 		return PRIMARY_TRANSPORT_ID; // just attempt to send it over primary
 	}
 
@@ -605,8 +606,12 @@ public class TransportBroker {
 			Bundle bundle = new Bundle();
 			bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId)); //We send this no matter what due to us not knowing what router version we are connecting to
 			bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
-			bundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, primaryTransport.toString());
-			bundle.putString(TransportConstants.TRANSPORT_SECONDARY_EXTRA, secondaryTransport.toString());
+			if(primaryTransport != null) {
+				bundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, primaryTransport.toString());
+			}
+			if(secondaryTransport != null){
+				bundle.putString(TransportConstants.TRANSPORT_SECONDARY_EXTRA, secondaryTransport.toString());
+			}
 			msg.setData(bundle);
 			sendMessageToRouterService(msg);
 		}
