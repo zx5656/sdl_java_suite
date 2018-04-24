@@ -273,11 +273,11 @@ public class MultiplexTransport extends SdlTransport{
 				public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining) {
 					super.onHardwareDisconnected(type, remaining);
 					handleTransportDisconnected(type, "");
-					if (connected && !remaining.contains(primaryTransport)) {
+					if (connected && remaining != null && !remaining.contains(primaryTransport)) {
 						Log.d(TAG, "Handling disconnect");
 						connected = false;
 						SdlConnection.enableLegacyMode(isLegacyModeEnabled(), TransportType.BLUETOOTH);
-					if (isLegacyModeEnabled()) {
+						if (isLegacyModeEnabled()) {
 							Log.d(TAG, "Handle transport disconnect, legacy mode enabled");
 							this.stop();
 							isDisconnecting = true;
