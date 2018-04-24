@@ -359,6 +359,7 @@ public class TransportBroker {
 			sttMap.put(SessionType.CONTROL, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
 			sttMap.put(SessionType.BULK_DATA, new HashSet<>(Arrays.asList(standardPrimaryTransports)));
 			sttMap.put(SessionType.NAV, new HashSet<>(Arrays.asList(standardSecondaryTransports)));
+			sttMap.put(SessionType.PCM, new HashSet<>(Arrays.asList(standardSecondaryTransports)));
 		}
 
 		/**

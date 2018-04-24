@@ -364,9 +364,13 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		@Override
 		public void onTransportDisconnected(TransportType transportType, String info) {
 			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
+				TransportType primaryTransport = ((MultiplexTransportConfig)_transportConfig).getPrimaryTransport();
 				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
 				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
 					_proxyListener.onSecondaryTransportDisabled();
+					return;
+				}else if(!transportType.equals(primaryTransport)){
+					return;
 				}
 			}
 
@@ -374,12 +378,8 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 			// disconnect has completed
 			notifyPutFileStreamError(null, info);
 			
-			if (!_advancedLifecycleManagementEnabled) {
-				Log.i(TAG, "Trying to close proxy");
-				// If original model, notify app the proxy is closed so it will delete and reinstanciate 
-				notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
-			}// else If ALM, nothing is required to be done here
-
+			Log.i(TAG, "Trying to close proxy");
+			notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
 		}
 
 		@Override

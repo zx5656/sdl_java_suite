@@ -247,11 +247,15 @@ public class MultiplexTransport extends SdlTransport{
 				public boolean onHardwareConnected(TransportType type, ArrayList<TransportType> remaining) {
 					if(super.onHardwareConnected(type, remaining)){
 						Log.d(TAG, "On transport connected...");
-						if(type.equals(secondaryTransport)) {
-							handleTransportConnected(type);
-						}else if(!connected){
-							connected = true;
-							handleTransportConnected(type);
+						if(type != null) {
+							if(type.equals(secondaryTransport)) {
+								handleTransportConnected(type);
+							}else if(!connected && type.equals(primaryTransport)) {
+								connected = true;
+								handleTransportConnected(type);
+							}else if(!remaining.contains(primaryTransport)){
+								handleTransportDisconnected(null, "Primary transport not connected!");
+							}
 						}
 						//else{Log.d(TAG, "Already connected");}
 						return true;
@@ -268,22 +272,21 @@ public class MultiplexTransport extends SdlTransport{
 				@Override
 				public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining) {
 					super.onHardwareDisconnected(type, remaining);
-					if(type.equals(secondaryTransport)) {
-						handleTransportDisconnected(type, "");
-					}else if(connected){
+					handleTransportDisconnected(type, "");
+					if (connected && !remaining.contains(primaryTransport)) {
 						Log.d(TAG, "Handling disconnect");
 						connected = false;
 						SdlConnection.enableLegacyMode(isLegacyModeEnabled(), TransportType.BLUETOOTH);
-						if(isLegacyModeEnabled()){
+					if (isLegacyModeEnabled()) {
 							Log.d(TAG, "Handle transport disconnect, legacy mode enabled");
 							this.stop();
 							isDisconnecting = true;
 							//handleTransportDisconnected("");
-							handleTransportError(type, "",null); //This seems wrong, but it works
-						}else{
+							handleTransportError(type, "", null); //This seems wrong, but it works
+						} else {
 							Log.d(TAG, "Handle transport Error");
 							isDisconnecting = true;
-							handleTransportError(type, "",null); //This seems wrong, but it works
+							handleTransportError(type, "", null); //This seems wrong, but it works
 						}
 					}
 				}
