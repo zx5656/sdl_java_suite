@@ -377,10 +377,8 @@ public class SdlRouterService extends Service{
 	                	service.onAppRegistered(app);
 
 	            		returnBundle = new Bundle();
-	            		ArrayList<String> connectedTransports = service.getConnectedTransports();
-	            		if(!connectedTransports.isEmpty()){
-				            returnBundle.putString(TransportConstants.HARDWARE_CONNECTED, connectedTransports.get(connectedTransports.size() - 1));
-			            }
+	            		returnBundle.putStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST, service.getConnectedTransports());
+
 	            		/*Add params if connected
 	            		if(service.isTransportConnected){
 	            			returnBundle.putString(TransportConstants.HARDWARE_CONNECTED, service.connectedTransportType.name());
@@ -448,10 +446,10 @@ public class SdlRouterService extends Service{
 
 									if(buffApp !=null){
 										if(buffApp.primaryTransport != null) {
-											receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.primaryTransport.toString());
+											receivedBundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, buffApp.primaryTransport.name());
 										}
 										if(buffApp.secondaryTransport != null) {
-											receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.secondaryTransport.toString());
+											receivedBundle.putString(TRANSPORT_SECONDARY_EXTRA, buffApp.secondaryTransport.name());
 										}
                                         buffApp.handleIncommingClientMessage(receivedBundle);
                                     }else{
@@ -1326,7 +1324,7 @@ public class SdlRouterService extends Service{
 			Message message = Message.obtain();
 			message.what = TransportConstants.HARDWARE_CONNECTION_EVENT;
 			Bundle bundle = new Bundle();
-			bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.toString());
+			bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.name());
 			bundle.putStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST, getConnectedTransports());
     		if(MultiplexBluetoothTransport.currentlyConnectedDevice!=null){
     			bundle.putString(CONNECTED_DEVICE_STRING_EXTRA_NAME, MultiplexBluetoothTransport.currentlyConnectedDevice);
@@ -1340,7 +1338,7 @@ public class SdlRouterService extends Service{
 		ArrayList<String> connected = new ArrayList<>();
 		for(TransportType transport : TransportType.values()){
 			if(isTransportConnected(transport)){
-				connected.add(transport.toString());
+				connected.add(transport.name());
 			}
 		}
 		return connected;
@@ -1409,18 +1407,20 @@ public class SdlRouterService extends Service{
 	}
 
 	public void onTransportError(TransportType transportType){
-        switch (transportType){
-            case BLUETOOTH:
-                if(bluetoothTransport !=null){
-                    bluetoothTransport.setStateManually(MultiplexBluetoothTransport.STATE_NONE);
-                    bluetoothTransport = null;
-                }
-                break;
-            case USB:
-                break;
-            case TCP:
-                break;
-        }
+		if(transportType != null) {
+			switch (transportType) {
+				case BLUETOOTH:
+					if (bluetoothTransport != null) {
+						bluetoothTransport.setStateManually(MultiplexBluetoothTransport.STATE_NONE);
+						bluetoothTransport = null;
+					}
+					break;
+				case USB:
+					break;
+				case TCP:
+					break;
+			}
+		}
     }
 
 	public void onPacketRead(SdlPacket packet){

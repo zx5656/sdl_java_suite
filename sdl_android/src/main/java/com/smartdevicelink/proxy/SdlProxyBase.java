@@ -361,25 +361,35 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 			}
 		}
 
+		// Here we assume that transportType is never null
 		@Override
 		public void onTransportDisconnected(TransportType transportType, String info) {
-			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
+			if(transportType == null){
+				notifyProxyClosed(info, new SdlException("Null transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
+				return;
+			}
+			if(_transportConfig.getClass().equals(MultiplexTransportConfig.class)){
 				TransportType primaryTransport = ((MultiplexTransportConfig)_transportConfig).getPrimaryTransport();
 				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
 				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
 					_proxyListener.onSecondaryTransportDisabled();
-					return;
-				}else if(!transportType.equals(primaryTransport)){
-					return;
-				}
-			}
+				}else if(primaryTransport != null && transportType.equals(primaryTransport)){
+					// proxyOnTransportDisconnect is called to alert the proxy that a requested
+					// disconnect has completed
+					notifyPutFileStreamError(null, info);
 
-			// proxyOnTransportDisconnect is called to alert the proxy that a requested
-			// disconnect has completed
-			notifyPutFileStreamError(null, info);
-			
-			Log.i(TAG, "Trying to close proxy");
-			notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
+					notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
+				}
+			}else{
+				// proxyOnTransportDisconnect is called to alert the proxy that a requested
+				// disconnect has completed
+				notifyPutFileStreamError(null, info);
+
+				if (!_advancedLifecycleManagementEnabled) {
+					// If original model, notify app the proxy is closed so it will delete and reinstanciate
+					notifyProxyClosed(info, new SdlException("Transport disconnected.", SdlExceptionCause.SDL_UNAVAILABLE), SdlDisconnectedReason.TRANSPORT_DISCONNECT);
+				}// else If ALM, nothing is required to be done here
+			}
 		}
 
 		@Override
@@ -387,8 +397,11 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 			DebugTool.logError("Transport failure: " + info, e);
 
 			if(transportType != null && _transportConfig.getClass().equals(MultiplexTransportConfig.class)){
-				if(transportType.equals(((MultiplexTransportConfig)_transportConfig).getSecondaryTransport())){
+				TransportType primaryTransport = ((MultiplexTransportConfig)_transportConfig).getPrimaryTransport();
+				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
+				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
 					_proxyListener.onSecondaryTransportDisabled();
+					return;
 				}
 			}
 			

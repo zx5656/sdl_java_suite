@@ -191,11 +191,11 @@ public class TransportBroker {
             			// yay! we have been registered. Now what?
             			broker.registeredWithRouterService = true;
             			if(bundle !=null){
-            				if(bundle.containsKey(TransportConstants.HARDWARE_CONNECTED)){
+            				if(bundle.containsKey(TransportConstants.HARDWARE_CONNECTED_LIST)){
             					if(bundle.containsKey(TransportConstants.CONNECTED_DEVICE_STRING_EXTRA_NAME)){
             						//Keep track if we actually get this
             					}
-            					broker.onHardwareConnected(TransportType.valueForString(bundle.getString(TransportConstants.HARDWARE_CONNECTED)),
+            					broker.onHardwareConnected(null,
 							            convertTransportList(bundle.getStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST)));
             				}
             				if(bundle.containsKey(TransportConstants.ROUTER_SERVICE_VERSION)){
@@ -429,10 +429,8 @@ public class TransportBroker {
 		
 		public void onHardwareDisconnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
-				if(remaining != null) {
-					validTransports = remaining;
-				}
-				if((type == null || remaining == null) || type.equals(primaryTransport)) { // dead object or lost primary
+				validTransports = remaining;
+				if(type == null || remaining == null) { // dead object
 					unBindFromRouterService();
 					routerServiceMessenger = null;
 					routerConnection = null;
@@ -443,9 +441,7 @@ public class TransportBroker {
 		
 		public boolean  onHardwareConnected(TransportType type, ArrayList<TransportType> remaining){
 			synchronized(INIT_LOCK){
-				if(remaining != null){
-					validTransports = remaining;
-				}
+				validTransports = remaining;
 				if(routerServiceMessenger==null){ // no messenger to use
 					queuedOnTransportConnect = type;
 					return false;
@@ -522,7 +518,7 @@ public class TransportBroker {
 				sendMessageToRouterService(message);
 				return true;
 			}else{ //Message is too big for IPC transaction 
-				Log.w(TAG, "Message too big for single IPC transaction. Breaking apart. Size - " +  bytes.length);
+				//Log.w(TAG, "Message too big for single IPC transaction. Breaking apart. Size - " +  bytes.length);
 				ByteArrayMessageSpliter splitter = new ByteArrayMessageSpliter(appId,TransportConstants.ROUTER_SEND_PACKET,bytes,packet.getPrioirtyCoefficient() );	
 				splitter.setRouterServiceVersion(routerServiceVersion);
 				while(splitter.isActive()){
@@ -608,10 +604,10 @@ public class TransportBroker {
 			bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId)); //We send this no matter what due to us not knowing what router version we are connecting to
 			bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
 			if(primaryTransport != null) {
-				bundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, primaryTransport.toString());
+				bundle.putString(TransportConstants.TRANSPORT_PRIMARY_EXTRA, primaryTransport.name());
 			}
 			if(secondaryTransport != null){
-				bundle.putString(TransportConstants.TRANSPORT_SECONDARY_EXTRA, secondaryTransport.toString());
+				bundle.putString(TransportConstants.TRANSPORT_SECONDARY_EXTRA, secondaryTransport.name());
 			}
 			msg.setData(bundle);
 			sendMessageToRouterService(msg);
