@@ -1324,7 +1324,9 @@ public class SdlRouterService extends Service{
 			Message message = Message.obtain();
 			message.what = TransportConstants.HARDWARE_CONNECTION_EVENT;
 			Bundle bundle = new Bundle();
-			bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.name());
+			if(type != null){
+				bundle.putString(TransportConstants.HARDWARE_CONNECTED, type.name());
+			}
 			bundle.putStringArrayList(TransportConstants.HARDWARE_CONNECTED_LIST, getConnectedTransports());
     		if(MultiplexBluetoothTransport.currentlyConnectedDevice!=null){
     			bundle.putString(CONNECTED_DEVICE_STRING_EXTRA_NAME, MultiplexBluetoothTransport.currentlyConnectedDevice);
