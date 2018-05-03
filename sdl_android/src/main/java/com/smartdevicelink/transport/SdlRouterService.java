@@ -1570,7 +1570,6 @@ public class SdlRouterService extends Service{
 					int offset = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0); //If nothing, start at the beginning of the array
 					int count = bundle.getInt(TransportConstants.BYTES_TO_SEND_EXTRA_COUNT, packet.length);  //In case there isn't anything just send the whole packet.
 					baseTransport.write(packet,offset,count);
-					baseTransport.write(packet,offset,count);
 					Log.i(TAG, "Writing to " + baseTransport.transportType.toString());
 					return true;
 				}

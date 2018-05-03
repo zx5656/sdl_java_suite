@@ -64,6 +64,7 @@ public class TransportBroker {
 	private int routerServiceVersion = 1;
 
 	// IDs for setting desired transport for packet
+	public static final int INVALID_TRANSPORT_ID = -1;
 	public static final int PRIMARY_TRANSPORT_ID = 0;
 	public static final int SECONDARY_TRANSPORT_ID = 1;
 
@@ -504,9 +505,16 @@ public class TransportBroker {
 				if(routerServiceVersion< TransportConstants.RouterServiceVersions.APPID_STRING){
 					bundle.putLong(TransportConstants.APP_ID_EXTRA,convertAppId(appId));
 				}
-				bundle.putInt(TransportConstants.TRANSPORT_PREFERENCE_ID_EXTRA, getTransportPreference(packet.getServiceType()));
-				String temp = (getTransportPreference(packet.getServiceType()) == PRIMARY_TRANSPORT_ID) ? "primary" : "secondary";
-				Log.i(TAG, "Attempting to send over " + temp + " transport");
+
+				int transport_preference = getTransportPreference(packet.getServiceType());
+				if(transport_preference == INVALID_TRANSPORT_ID){
+					Log.i(TAG, "Cannot send serviceType over desired transport");
+					return false;
+				}else{
+					String temp = (transport_preference == PRIMARY_TRANSPORT_ID) ? "primary" : "secondary";
+					Log.i(TAG, "Attempting to send over " + temp + " transport");
+				}
+				bundle.putInt(TransportConstants.TRANSPORT_PREFERENCE_ID_EXTRA, transport_preference);
 				bundle.putString(TransportConstants.APP_ID_EXTRA_STRING, appId);
 				bundle.putByteArray(TransportConstants.BYTES_TO_SEND_EXTRA_NAME, bytes); //Do we just change this to the args and objs
 				bundle.putInt(TransportConstants.BYTES_TO_SEND_EXTRA_OFFSET, 0);
@@ -535,16 +543,21 @@ public class TransportBroker {
 		if(validTransports != null && secondaryTransport != null){
 			if(validTransports.contains(secondaryTransport) && validTransports.contains(primaryTransport)){
 				if(sttMap.get(sessionType).contains(secondaryTransport)){
+					Log.i(TAG, "Setting transport preference to " +secondaryTransport.name());
 					return SECONDARY_TRANSPORT_ID;
 				}else{
 					Log.i(TAG, "Can't send serviceType: " + sessionType.getName() + " over " + secondaryTransport.name());
 				}
-			}else{
-				Log.i(TAG, "Secondary transport " +secondaryTransport.name() + " not available");
+			}else if(validTransports.contains(primaryTransport)){
+				if(sttMap.get(sessionType).contains(primaryTransport)){
+					Log.i(TAG, "Setting transport preference to " +primaryTransport.name());
+					return PRIMARY_TRANSPORT_ID;
+				}else{
+					Log.i(TAG, "Can't send serviceType: " + sessionType.getName() + " over " + primaryTransport.name());
+				}
 			}
 		}
-		Log.i(TAG, "Setting transport preference to " +primaryTransport.name());
-		return PRIMARY_TRANSPORT_ID; // just attempt to send it over primary
+		return INVALID_TRANSPORT_ID; // don't send it over a restricted transport
 	}
 
 	/**

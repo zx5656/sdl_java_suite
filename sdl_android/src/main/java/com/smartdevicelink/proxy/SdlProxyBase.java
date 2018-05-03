@@ -372,7 +372,12 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 				TransportType primaryTransport = ((MultiplexTransportConfig)_transportConfig).getPrimaryTransport();
 				TransportType secondaryTransport = ((MultiplexTransportConfig)_transportConfig).getSecondaryTransport();
 				if(secondaryTransport != null && transportType.equals(secondaryTransport)){
-					_proxyListener.onSecondaryTransportDisabled();
+					_proxyListener.onSecondaryTransportDisabled(); // notify the developer
+					if(!primaryTransport.equals(TransportType.TCP) && !primaryTransport.equals(TransportType.USB)){
+						// If our primary transport is not high-bandwidth
+						stopRemoteDisplayStream();
+						endAudioStream();
+					}
 				}else if(primaryTransport != null && transportType.equals(primaryTransport)){
 					// proxyOnTransportDisconnect is called to alert the proxy that a requested
 					// disconnect has completed
