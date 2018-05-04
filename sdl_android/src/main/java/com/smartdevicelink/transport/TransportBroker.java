@@ -508,7 +508,10 @@ public class TransportBroker {
 
 				int transport_preference = getTransportPreference(packet.getServiceType());
 				if(transport_preference == INVALID_TRANSPORT_ID){
-					Log.i(TAG, "Cannot send serviceType over desired transport");
+					Log.i(TAG, "Cannot send serviceType "
+							+ SessionType.valueOf((byte) packet.getServiceType()).getName()
+							+ " over either transport - "
+							+ primaryTransport + " or " + secondaryTransport);
 					return false;
 				}else{
 					String temp = (transport_preference == PRIMARY_TRANSPORT_ID) ? "primary" : "secondary";
@@ -540,15 +543,15 @@ public class TransportBroker {
 
 	private int getTransportPreference(int serviceType) {
 		SessionType sessionType = SessionType.valueOf((byte) serviceType);
-		if(validTransports != null && secondaryTransport != null){
-			if(validTransports.contains(secondaryTransport) && validTransports.contains(primaryTransport)){
+		if(validTransports != null){
+			if(secondaryTransport != null && validTransports.contains(secondaryTransport) && validTransports.contains(primaryTransport)){
 				if(sttMap.get(sessionType).contains(secondaryTransport)){
 					Log.i(TAG, "Setting transport preference to " +secondaryTransport.name());
 					return SECONDARY_TRANSPORT_ID;
 				}else{
 					Log.i(TAG, "Can't send serviceType: " + sessionType.getName() + " over " + secondaryTransport.name());
 				}
-			}else if(validTransports.contains(primaryTransport)){
+			}else if(primaryTransport != null && validTransports.contains(primaryTransport)){
 				if(sttMap.get(sessionType).contains(primaryTransport)){
 					Log.i(TAG, "Setting transport preference to " +primaryTransport.name());
 					return PRIMARY_TRANSPORT_ID;
