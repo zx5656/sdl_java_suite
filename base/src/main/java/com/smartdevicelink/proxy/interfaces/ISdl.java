@@ -103,6 +103,13 @@ public interface ISdl {
     IVideoStreamListener startVideoStream(boolean isEncrypted, VideoStreamingParameters parameters);
 
     /**
+     * Starts the actual video encoder
+     * @return the stream listener that will take the bytes to encode them into the negotiated
+     * encoding.
+     */
+    IVideoStreamListener startVideoStreamEncoder();
+
+    /**
      * Starts the Audio streaming service
      * @param encrypted flag to start this service with encryption or not
      */

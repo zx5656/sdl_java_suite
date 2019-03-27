@@ -125,7 +125,7 @@ public class VideoStreamManagerTests extends AndroidTestCase2 {
 		videoStreamManager.start(new CompletionListener() {
 			@Override
 			public void onComplete(boolean success) {
-				assertNull(videoStreamManager.startVideoService(
+				assertNull(videoStreamManager.startStreaming(
 						new VideoStreamingParameters(), false));
 			}
 		});

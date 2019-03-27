@@ -316,6 +316,11 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
 		}
 
 		@Override
+		public IVideoStreamListener startVideoStreamEncoder(){
+			return SdlProxyBase.this.startVideoStreamEncoder();
+		}
+
+		@Override
 		public void stopVideoService() {
 			if(isConnected()){
 				sdlSession.endService(SessionType.NAV,sdlSession.getSessionId());
@@ -4917,7 +4922,6 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
         }
 
 		sdlSession.setDesiredVideoParams(parameters);
-
 		VideoStreamingParameters acceptedParams = tryStartVideoStream(isEncrypted, parameters);
         if (acceptedParams != null) {
             return sdlSession.startVideoStream();
@@ -4925,6 +4929,24 @@ public abstract class SdlProxyBase<proxyListenerType extends IProxyListenerBase>
             return null;
         }
     }
+
+	/**
+	 * Starts the stream encoder. The video service should already be started before calling.
+	 * @return
+	 */
+	public IVideoStreamListener startVideoStreamEncoder(){
+    	if(sdlSession == null || !sdlSession.getIsConnected()){
+			DebugTool.logError("Unable to start streaming: SdlSession isn't ready.");
+			return null;
+		}
+    	if(sdlSession.getAcceptedVideoParams() == null){
+    		DebugTool.logError("Unable to start streaming as the accepted params were null");
+    		return null;
+		}
+
+		return sdlSession.startVideoStream();
+
+	}
 
     /**
      *Closes the opened video service (serviceType 11)

@@ -58,7 +58,8 @@ public class VideoStreamManager extends BaseVideoStreamManager {
 	private StreamingStateMachine stateMachine;
 	private VideoStreamingParameters parameters;
 	private IVideoStreamListener streamListener;
-	private boolean isTransportAvailable = false;
+	private boolean isTransportAvailable = false, videoServiceStarted = false;
+	private boolean queueStreaming = false;
 
 	// INTERNAL INTERFACES
 
@@ -66,13 +67,25 @@ public class VideoStreamManager extends BaseVideoStreamManager {
 		@Override
 		public void onServiceStarted(SdlSession session, SessionType type, boolean isEncrypted) {
 			if(SessionType.NAV.equals(type)){
+				videoServiceStarted = true;
+				if(session != null && session.getAcceptedVideoParams() != null){
+					parameters = session.getAcceptedVideoParams();
+				}
 				stateMachine.transitionToState(StreamingStateMachine.READY);
+				//we are actually ready to start streaming
+				if(queueStreaming){
+					//If a streaming session was queued then it's time to start the enocder
+					startStreaming();
+					//Reset the queue
+					queueStreaming = false;
+				}
 			}
 		}
 
 		@Override
 		public void onServiceEnded(SdlSession session, SessionType type) {
 			if(SessionType.NAV.equals(type)){
+				videoServiceStarted = false;
 				stateMachine.transitionToState(StreamingStateMachine.NONE);
 				if(remoteDisplay!=null){
 					stopStreaming();
@@ -82,6 +95,7 @@ public class VideoStreamManager extends BaseVideoStreamManager {
 
 		@Override
 		public void onServiceError(SdlSession session, SessionType type, String reason) {
+			videoServiceStarted = false;
 			stateMachine.transitionToState(StreamingStateMachine.ERROR);
 			transitionToState(BaseSubManager.ERROR);
 		}
@@ -230,40 +244,38 @@ public class VideoStreamManager extends BaseVideoStreamManager {
 	}
 
 	/**
-	 * Opens a video service (service type 11) and subsequently provides an IVideoStreamListener
-	 * to the app to send video data. The supplied VideoStreamingParameters will be set as desired paramaters
-	 * that will be used to negotiate
-	 *
-	 * @param parameters  Video streaming parameters including: codec which will be used for streaming (currently, only
-	 *                    VideoStreamingCodec.H264 is accepted), height and width of the video in pixels.
-	 * @param encrypted Specify true if packets on this service have to be encrypted
-	 *
-	 * @return IVideoStreamListener interface if service is opened successfully and streaming is
-	 *         started, null otherwise
-	 */
-	protected IVideoStreamListener startVideoService(VideoStreamingParameters parameters, boolean encrypted){
-		if(hmiLevel != HMILevel.HMI_FULL){
-			Log.e(TAG, "Cannot start video service if HMILevel is not FULL.");
-			return null;
-		}
-		IVideoStreamListener listener = internalInterface.startVideoStream(encrypted, parameters);
-		if(listener != null){
-			stateMachine.transitionToState(StreamingStateMachine.STARTED);
-		}else{
-			stateMachine.transitionToState(StreamingStateMachine.ERROR);
-		}
-		return listener;
-	}
-
-	/**
 	 * Starts video service, sets up encoder, haptic manager, and remote display. Begins streaming the remote display.
 	 * @param parameters Video streaming parameters including: codec which will be used for streaming (currently, only
 	 *                    VideoStreamingCodec.H264 is accepted), height and width of the video in pixels.
 	 * @param encrypted Specify true if packets on this service have to be encrypted
+	 * @return if the stream was kicked off
 	 */
-	private void startStreaming(VideoStreamingParameters parameters, boolean encrypted){
+	protected boolean startStreaming(VideoStreamingParameters parameters, boolean encrypted){
 		this.parameters = parameters;
-		this.streamListener = startVideoService(parameters, encrypted);
+		if(hmiLevel != HMILevel.HMI_FULL){
+			Log.e(TAG, "Cannot start video service if HMILevel is not FULL.");
+			return false;
+		}
+		if(videoServiceStarted){
+			startStreaming();
+			return true;
+		}else {
+			if (!queueStreaming) { //Make sure we haven't already queued streaming
+				queueStreaming = true;
+				this.internalInterface.startVideoService(parameters, encrypted);
+				return true;
+			}
+		}
+		return false;
+
+	}
+
+	/**
+	 * Starts the actual data stream by telling the session to start the stream encoder then starts
+	 * the virtual display encoder.
+	 */
+	private void startStreaming(){
+		VideoStreamManager.this.streamListener = internalInterface.startVideoStreamEncoder();
 		if(streamListener == null){
 			Log.e(TAG, "Error starting video service");
 			stateMachine.transitionToState(StreamingStateMachine.ERROR);
@@ -324,22 +336,21 @@ public class VideoStreamManager extends BaseVideoStreamManager {
 	 * Stops streaming, ends video streaming service and removes service listeners.
 	 */
 	@Override
-	public void dispose(){
+	public void dispose() {
 		stopStreaming();
 
 		hapticManager = null;
 		remoteDisplay = null;
 		parameters = null;
 		virtualDisplayEncoder = null;
-		if(internalInterface!=null){
+		if (internalInterface != null) {
 			internalInterface.stopVideoService();
+
+			// Remove listeners
+			internalInterface.removeServiceListener(SessionType.NAV, serviceListener);
+			internalInterface.removeOnRPCNotificationListener(FunctionID.ON_TOUCH_EVENT, touchListener);
+			internalInterface.removeOnRPCNotificationListener(FunctionID.ON_HMI_STATUS, hmiListener);
 		}
-
-		// Remove listeners
-		internalInterface.removeServiceListener(SessionType.NAV, serviceListener);
-		internalInterface.removeOnRPCNotificationListener(FunctionID.ON_TOUCH_EVENT, touchListener);
-		internalInterface.removeOnRPCNotificationListener(FunctionID.ON_HMI_STATUS, hmiListener);
-
 		stateMachine.transitionToState(StreamingStateMachine.NONE);
 		super.dispose();
 	}

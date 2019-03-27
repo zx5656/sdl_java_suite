@@ -616,6 +616,11 @@ public class SdlManager extends BaseSdlManager{
 		}
 
 		@Override
+		public IVideoStreamListener startVideoStreamEncoder() {
+			return proxy.startVideoStreamEncoder();
+		}
+
+		@Override
 		public void stopVideoService() {
 			if(proxy.getIsConnected()){
 				proxy.endVideoStream();

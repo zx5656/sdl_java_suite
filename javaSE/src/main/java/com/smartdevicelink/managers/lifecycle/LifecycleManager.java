@@ -906,6 +906,12 @@ public class LifecycleManager extends BaseLifecycleManager {
         }
 
         @Override
+        public IVideoStreamListener startVideoStreamEncoder() {
+            DebugTool.logWarning("startVideoStreamEncoder is not currently implemented");
+            return null;
+        }
+
+        @Override
         public void startAudioService(boolean encrypted, AudioStreamingCodec codec, AudioStreamingParams params) {
             DebugTool.logWarning("startAudioService is not currently implemented");
         }
